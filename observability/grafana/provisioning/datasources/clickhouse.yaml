@@ -1,0 +1,22 @@
+apiVersion: 1
+datasources:
+  - name: ClickHouse
+    uid: clickhouse
+    type: grafana-clickhouse-datasource
+    isDefault: true
+    jsonData:
+      host: clickhouse
+      port: 8123
+      protocol: http
+      username: sentinel
+      defaultDatabase: sentinel
+      logs:
+        defaultDatabase: otel
+        defaultTable: otel_logs
+        otelEnabled: true
+      traces:
+        defaultDatabase: otel
+        defaultTable: otel_traces
+        otelEnabled: true
+    secureJsonData:
+      password: sentinel

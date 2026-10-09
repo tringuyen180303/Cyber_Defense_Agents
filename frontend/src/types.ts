@@ -165,4 +165,6 @@ export interface RunState {
   agent_log?: AgentStep[];
   integrations?: Record<string, string> | null;
   error?: string | null;
+  trace_id?: string | null;
+  trace_url?: string | null;
 }

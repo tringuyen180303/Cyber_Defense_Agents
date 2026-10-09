@@ -95,6 +95,11 @@ export default function App() {
           <div className="controls">
             <span className={`dot ${connected ? "ok" : "bad"}`} title={connected ? "connected" : "disconnected"} />
             <span className={`phase phase-${state.phase}`}>{state.phase.replace("_", " ")}</span>
+            {state.trace_url && (
+              <a className="trace-link" href={state.trace_url} target="_blank" rel="noreferrer" title="OpenTelemetry trace of this run in Grafana">
+                Trace ↗
+              </a>
+            )}
             <button className="primary" onClick={simulate} disabled={running}>
               {running ? "Running…" : "▶ Simulate credential attack"}
             </button>

@@ -11,6 +11,7 @@ import itertools
 import json
 from typing import Any, Callable
 
+from . import telemetry
 from .evaluation import evaluate
 from .knowledge import FEATURES, Knowledge
 from .llm import LLM
@@ -179,6 +180,7 @@ def regressions(base: dict[str, Any], card: dict[str, Any]) -> list[str]:
     return out
 
 
+@telemetry.traced("learning.improve")
 def improve(k: Knowledge, scenarios: list[Scenario], *, max_steps: int = 4, llm: LLM | None = None,
             log: Callable[[str], None] = print) -> dict[str, Any]:
     runs: dict[str, tuple[Scenario, Run]] = {}
@@ -199,10 +201,18 @@ def improve(k: Knowledge, scenarios: list[Scenario], *, max_steps: int = 4, llm:
                 tested.append({**c, "verdict": f"invalid: {exc}"})
                 continue
             rr: dict[str, tuple[Scenario, Run]] = {}
-            card = evaluate(kk, scenarios, runs=rr)
-            regs = regressions(cur_card, card)
-            better = objective(card) > objective(cur_card)
-            verdict = "rejected: " + "; ".join(regs) if regs else ("improves" if better else "no improvement")
+            with telemetry.span("learning.candidate", **{"sentinel.change_type": c["type"],
+                                                         "sentinel.change": c["description"],
+                                                         "sentinel.trigger": c.get("trigger"),
+                                                         "sentinel.step": step + 1}) as sp:
+                card = evaluate(kk, scenarios, runs=rr)
+                regs = regressions(cur_card, card)
+                better = objective(card) > objective(cur_card)
+                verdict = "rejected: " + "; ".join(regs) if regs else ("improves" if better else "no improvement")
+                m = card["metrics"]
+                sp.set(**{"sentinel.verdict": verdict.split(":")[0], "sentinel.verdict_detail": verdict,
+                          "sentinel.recall": m["recall"], "sentinel.false_positives": m["false_positives"],
+                          "sentinel.avg_attempts": m["avg_attempts"], "sentinel.regressions": regs})
             tested.append({**c, "verdict": verdict, "metrics": card["metrics"]})
             log(f"  {'✓' if not regs and better else '✗'} {c['description']} — {verdict}")
             if not regs and better and (best is None or objective(card) > objective(best[1])):
@@ -212,4 +222,6 @@ def improve(k: Knowledge, scenarios: list[Scenario], *, max_steps: int = 4, llm:
         c, cur_card, cur_k, cur_runs = best
         accepted.append(c)
         log(f"  accepted: {c['description']}")
+    telemetry.annotate(**{"sentinel.knowledge_version": k.version, "sentinel.candidates_tested": len(tested),
+                          "sentinel.accepted": [c["description"] for c in accepted]})
     return {"base": base, "card": cur_card, "knowledge": cur_k, "accepted": accepted, "tested": tested}

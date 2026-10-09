@@ -13,6 +13,7 @@ from typing import Any, Callable
 import yaml
 
 from . import knowledge as kb
+from . import telemetry
 from .evaluation import evaluate, print_card
 from .learner import improve
 from .llm import LLM
@@ -21,6 +22,7 @@ from .scenarios import DISCOVERED_DIR, build, load_suite, save_discovered
 from .store import get_store
 
 
+@telemetry.traced("learning.learn")
 def learn(*, log: Callable[[str], None] = print, use_llm: bool = False, trigger: str = "manual") -> dict[str, Any]:
     """One learning pass on the current suite; leaves a pending candidate if it found an improvement."""
     k = kb.load()
@@ -53,16 +55,20 @@ def _summary(res: dict[str, Any]) -> dict[str, Any]:
             "tested": len(res["tested"]), "accepted": len(res["accepted"])}
 
 
+@telemetry.traced("learning.promote")
 def approve_pending(approved_by: str = "human") -> int:
     p = yaml.safe_load(kb.PENDING.read_text())
     cand = kb.Knowledge(p["knowledge"])
     card = {"version": None, "metrics": p["metrics"], "results": p["results"]}
     v = kb.promote(cand, summary=p["summary"], changes=p["changes"], card=card, approved_by=approved_by)
     card["version"] = v
+    telemetry.annotate(**{"sentinel.knowledge_version": v, "sentinel.approved_by": approved_by,
+                          "sentinel.summary": p["summary"]})
     kb.save_scorecard(v, card)
     return v
 
 
+@telemetry.traced("learning.red_team_round")
 def red_team_round(round_no: int, *, log: Callable[[str], None] = print, budget: int = 40, keep: int = 3) -> int:
     k = kb.load()
     base = [s for s in load_suite(include_discovered=False) if s.label == "attack"]
@@ -110,6 +116,7 @@ def reset() -> None:
 
 
 def main() -> None:
+    telemetry.init()
     p = argparse.ArgumentParser()
     p.add_argument("--rounds", type=int, default=2)
     p.add_argument("--auto-approve", action="store_true")

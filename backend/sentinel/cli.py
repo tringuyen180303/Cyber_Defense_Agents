@@ -14,6 +14,9 @@ from .run import Run  # noqa: E402
 
 
 def main() -> Run:
+    from . import telemetry
+
+    telemetry.init()
     run = Run()
     asyncio.run(run_incident(run))
     for s in run.state.agent_log:

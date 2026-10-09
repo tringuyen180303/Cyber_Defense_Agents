@@ -200,6 +200,7 @@ class Integrations(BaseModel):
     code_scanner: str
     threat_intel: str
     executor: str
+    observability: str = "off"
 
 
 class RunState(BaseModel):
@@ -214,3 +215,5 @@ class RunState(BaseModel):
     agent_log: list[AgentStep] = Field(default_factory=list)
     integrations: Integrations | None = None
     error: str | None = None
+    trace_id: str | None = None
+    trace_url: str | None = None

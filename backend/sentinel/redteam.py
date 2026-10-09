@@ -12,6 +12,7 @@ import json
 import random
 from typing import Any, Callable
 
+from . import telemetry
 from .evaluation import run_scenario
 from .knowledge import Knowledge
 from .scenarios import Scenario, build, clone_spec
@@ -135,6 +136,7 @@ def variants(base: list[Scenario], seed: int, max_ops: int = 3) -> list[dict[str
     return out
 
 
+@telemetry.traced("learning.red_team")
 def hunt(k: Knowledge, base: list[Scenario], *, seed: int, budget: int = 40, keep: int = 3,
          known_ids: set[str] | None = None, log: Callable[[str], None] = print) -> list[dict[str, Any]]:
     """Run up to `budget` variants against knowledge `k`; return up to `keep` diverse evasions."""
@@ -154,6 +156,9 @@ def hunt(k: Knowledge, base: list[Scenario], *, seed: int, budget: int = 40, kee
             spec["provenance"]["evaded_version"] = k.version
             spec["provenance"]["confidence_at_evasion"] = r.confidence
             evasions.append(spec)
+            telemetry.add_event("evasion", **{"sentinel.scenario": spec["id"], "sentinel.confidence": r.confidence})
             log(f"evasion: {spec['id']} (confidence {r.confidence:.2f} < threshold {k.d['open_threshold']})")
+    telemetry.annotate(**{"sentinel.knowledge_version": k.version, "sentinel.variants_tried": tried,
+                          "sentinel.evasions": [e["id"] for e in evasions]})
     log(f"red team tried {tried} variants against v{k.version}: {len(evasions)} new evasion(s)")
     return evasions

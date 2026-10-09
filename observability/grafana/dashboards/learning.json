@@ -1,0 +1,769 @@
+{
+ "uid": "sentinel-learning",
+ "title": "Sentinel · Self-improvement",
+ "description": "How knowledge versions improve, and every decision of the learner / red team / evaluator gate.",
+ "tags": [
+  "sentinel"
+ ],
+ "timezone": "utc",
+ "schemaVersion": 39,
+ "version": 1,
+ "editable": true,
+ "graphTooltip": 1,
+ "time": {
+  "from": "now-24h",
+  "to": "now"
+ },
+ "refresh": "10s",
+ "panels": [
+  {
+   "id": 1,
+   "type": "row",
+   "title": "Knowledge versions (scorecards recorded at each promotion)",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 2,
+   "type": "stat",
+   "title": "Knowledge versions",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT uniq(knowledge_version) FROM sentinel.eval_results"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "purple",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "transformations": []
+  },
+  {
+   "id": 3,
+   "type": "stat",
+   "title": "Scenarios in latest suite",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 4,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT count() FROM sentinel.eval_results WHERE knowledge_version = (SELECT max(knowledge_version) FROM sentinel.eval_results)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "transformations": []
+  },
+  {
+   "id": 4,
+   "type": "stat",
+   "title": "Recall (latest)",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT avgIf(detected, label = 'attack') FROM sentinel.eval_results WHERE knowledge_version = (SELECT max(knowledge_version) FROM sentinel.eval_results)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "red",
+        "value": null
+       },
+       {
+        "color": "green",
+        "value": 0.999
+       }
+      ]
+     },
+     "decimals": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "transformations": []
+  },
+  {
+   "id": 5,
+   "type": "stat",
+   "title": "False positives (latest)",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT countIf(detected AND label = 'benign') FROM sentinel.eval_results WHERE knowledge_version = (SELECT max(knowledge_version) FROM sentinel.eval_results)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "transformations": []
+  },
+  {
+   "id": 6,
+   "type": "stat",
+   "title": "Candidates tested by the gate",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT count() FROM otel.otel_traces WHERE SpanName = 'learning.candidate' AND $__timeFilter(Timestamp)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "transformations": []
+  },
+  {
+   "id": 7,
+   "type": "stat",
+   "title": "Rejected for regressions",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 20,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT countIf(SpanAttributes['sentinel.verdict'] = 'rejected') FROM otel.otel_traces WHERE SpanName = 'learning.candidate' AND $__timeFilter(Timestamp)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "orange",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "transformations": []
+  },
+  {
+   "id": 8,
+   "type": "barchart",
+   "title": "Detection quality by knowledge version",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 5,
+    "w": 12,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT concat('v', toString(knowledge_version)) AS version, avgIf(detected, label = 'attack') AS recall, avg(correct) AS accuracy, avgIf(plan_attempts = 1, detected AND label = 'attack') AS first_try_plans FROM sentinel.eval_results GROUP BY knowledge_version ORDER BY knowledge_version"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "xField": "version",
+    "orientation": "vertical",
+    "showValue": "auto",
+    "stacking": "none",
+    "legend": {
+     "showLegend": true,
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "xTickLabelRotation": 0,
+    "barWidth": 0.7,
+    "groupWidth": 0.7
+   },
+   "transformations": []
+  },
+  {
+   "id": 9,
+   "type": "barchart",
+   "title": "Mistakes by knowledge version",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 5,
+    "w": 12,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT concat('v', toString(knowledge_version)) AS version, countIf(NOT detected AND label = 'attack') AS missed_attacks, countIf(detected AND label = 'benign') AS false_positives, sumIf(plan_attempts - 1, detected AND plan_attempts > 1) AS extra_sandbox_attempts FROM sentinel.eval_results GROUP BY knowledge_version ORDER BY knowledge_version"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "xField": "version",
+    "orientation": "vertical",
+    "showValue": "auto",
+    "stacking": "normal",
+    "legend": {
+     "showLegend": true,
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "xTickLabelRotation": 0,
+    "barWidth": 0.7,
+    "groupWidth": 0.7
+   },
+   "transformations": []
+  },
+  {
+   "id": 10,
+   "type": "table",
+   "title": "Scenario × version (✓ correct · ✗ wrong; ⚔ = discovered by the red team)",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 14,
+    "w": 24,
+    "h": 11
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT concat(if(startsWith(scenario, 'rt-'), '⚔ ', ''), scenario, ' [', label, ']') AS scenario, concat('v', toString(knowledge_version)) AS version, if(correct, if(label = 'attack', concat('✓ ', toString(ifNull(plan_attempts, 0)), ' try'), '✓'), if(label = 'attack', '✗ missed', '✗ false alarm')) AS result FROM sentinel.eval_results ORDER BY scenario, knowledge_version LIMIT 1 BY scenario, knowledge_version"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "cellOptions": {
+       "type": "color-text"
+      }
+     },
+     "mappings": [
+      {
+       "type": "regex",
+       "options": {
+        "pattern": "✓.*",
+        "result": {
+         "color": "green",
+         "index": 0
+        }
+       }
+      },
+      {
+       "type": "regex",
+       "options": {
+        "pattern": "✗.*",
+        "result": {
+         "color": "red",
+         "index": 1
+        }
+       }
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "transformations": [
+    {
+     "id": "groupingToMatrix",
+     "options": {
+      "columnField": "version",
+      "rowField": "scenario",
+      "valueField": "result",
+      "emptyValue": "null"
+     }
+    }
+   ]
+  },
+  {
+   "id": 11,
+   "type": "row",
+   "title": "The learning loop (OpenTelemetry traces of learner, red team and promotions)",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 25,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 12,
+   "type": "table",
+   "title": "Every candidate change the evaluator gate tested",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 26,
+    "w": 24,
+    "h": 10
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT Timestamp AS time, SpanAttributes['sentinel.change_type'] AS type, SpanAttributes['sentinel.change'] AS change, SpanAttributes['sentinel.trigger'] AS triggered_by, SpanAttributes['sentinel.verdict_detail'] AS verdict, SpanAttributes['sentinel.recall'] AS recall, SpanAttributes['sentinel.false_positives'] AS fp FROM otel.otel_traces WHERE SpanName = 'learning.candidate' AND $__timeFilter(Timestamp) ORDER BY Timestamp DESC LIMIT 100"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "verdict"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-text"
+        }
+       },
+       {
+        "id": "mappings",
+        "value": [
+         {
+          "type": "regex",
+          "options": {
+           "pattern": "improves",
+           "result": {
+            "color": "green",
+            "index": 0
+           }
+          }
+         },
+         {
+          "type": "regex",
+          "options": {
+           "pattern": "rejected.*",
+           "result": {
+            "color": "red",
+            "index": 1
+           }
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "transformations": []
+  },
+  {
+   "id": 13,
+   "type": "table",
+   "title": "Red-team evasions found",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 36,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT Timestamp AS time, SpanAttributes['sentinel.knowledge_version'] AS against_version, SpanAttributes['sentinel.variants_tried'] AS variants_tried, SpanAttributes['sentinel.evasions'] AS evasions FROM otel.otel_traces WHERE SpanName = 'learning.red_team' AND $__timeFilter(Timestamp) ORDER BY Timestamp DESC"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "transformations": []
+  },
+  {
+   "id": 14,
+   "type": "table",
+   "title": "Promotions",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 36,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT Timestamp AS time, SpanAttributes['sentinel.knowledge_version'] AS version, SpanAttributes['sentinel.approved_by'] AS approved_by, SpanAttributes['sentinel.summary'] AS summary FROM otel.otel_traces WHERE SpanName = 'learning.promote' AND $__timeFilter(Timestamp) ORDER BY Timestamp DESC"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "transformations": []
+  }
+ ],
+ "templating": {
+  "list": []
+ },
+ "links": [
+  {
+   "title": "Sentinel dashboards",
+   "type": "dashboards",
+   "tags": [
+    "sentinel"
+   ],
+   "asDropdown": false,
+   "includeVars": false,
+   "keepTime": false
+  }
+ ],
+ "annotations": {
+  "list": []
+ }
+}

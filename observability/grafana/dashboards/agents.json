@@ -1,0 +1,996 @@
+{
+ "uid": "sentinel-agents",
+ "title": "Sentinel · Agent observability",
+ "description": "OpenTelemetry traces and logs of Sentinel's agents, stored in ClickHouse.",
+ "tags": [
+  "sentinel"
+ ],
+ "timezone": "utc",
+ "schemaVersion": 39,
+ "version": 1,
+ "editable": true,
+ "graphTooltip": 1,
+ "time": {
+  "from": "now-6h",
+  "to": "now"
+ },
+ "refresh": "10s",
+ "panels": [
+  {
+   "id": 1,
+   "type": "row",
+   "title": "Fleet: every autonomous incident response in the time range",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 2,
+   "type": "stat",
+   "title": "Incidents handled",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT count() FROM otel.otel_traces WHERE SpanName = 'incident' AND ServiceName = 'sentinel' AND $__timeFilter(Timestamp)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "transformations": []
+  },
+  {
+   "id": 3,
+   "type": "stat",
+   "title": "Resolved autonomously",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 4,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT avg(SpanAttributes['sentinel.outcome'] = 'resolved') FROM otel.otel_traces WHERE SpanName = 'incident' AND ServiceName = 'sentinel' AND $__timeFilter(Timestamp)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "red",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 0.8
+       },
+       {
+        "color": "green",
+        "value": 0.95
+       }
+      ]
+     },
+     "decimals": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "transformations": []
+  },
+  {
+   "id": 4,
+   "type": "stat",
+   "title": "Median time to verified containment",
+   "description": "Wall-clock seconds from incident opened to production-verified containment (includes human approval wait when not auto-approved).",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT quantile(0.5)(toFloat64OrNull(SpanAttributes['sentinel.time_to_contain_s'])) FROM otel.otel_traces WHERE SpanName = 'incident' AND ServiceName = 'sentinel' AND $__timeFilter(Timestamp)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "purple",
+        "value": null
+       }
+      ]
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "transformations": []
+  },
+  {
+   "id": 5,
+   "type": "stat",
+   "title": "Plans passing sandbox first try",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT avg(SpanAttributes['sentinel.sandbox_first_try'] = 'true') FROM otel.otel_traces WHERE SpanName = 'incident' AND ServiceName = 'sentinel' AND $__timeFilter(Timestamp) AND SpanAttributes['sentinel.plan_attempts'] != ''"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "orange",
+        "value": null
+       },
+       {
+        "color": "green",
+        "value": 0.99
+       }
+      ]
+     },
+     "decimals": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "transformations": []
+  },
+  {
+   "id": 6,
+   "type": "stat",
+   "title": "LLM tokens",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT sum(toUInt64OrZero(SpanAttributes['gen_ai.usage.input_tokens']) + toUInt64OrZero(SpanAttributes['gen_ai.usage.output_tokens'])) FROM otel.otel_traces WHERE SpanAttributes['gen_ai.system'] = 'openai' AND $__timeFilter(Timestamp)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "semi-dark-blue",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "transformations": []
+  },
+  {
+   "id": 7,
+   "type": "stat",
+   "title": "LLM cost (est.)",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 20,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT sum(toFloat64OrZero(SpanAttributes['sentinel.llm.cost_usd'])) FROM otel.otel_traces WHERE SpanAttributes['gen_ai.system'] = 'openai' AND $__timeFilter(Timestamp)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "currencyUSD",
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "semi-dark-blue",
+        "value": null
+       }
+      ]
+     },
+     "decimals": 3
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "transformations": []
+  },
+  {
+   "id": 8,
+   "type": "table",
+   "title": "Recent incidents — click a row's trace to inspect it",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 5,
+    "w": 24,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT Timestamp AS started, SpanAttributes['sentinel.incident_id'] AS incident, SpanAttributes['sentinel.outcome'] AS outcome, concat('v', SpanAttributes['sentinel.knowledge_version']) AS knowledge, SpanAttributes['sentinel.reasoning'] AS reasoning, toUInt8OrNull(SpanAttributes['sentinel.plan_attempts']) AS sandbox_attempts, toFloat64OrNull(SpanAttributes['sentinel.time_to_contain_s']) AS contain_s, concat(SpanAttributes['sentinel.paths_before'], ' → ', SpanAttributes['sentinel.paths_after']) AS attack_paths, Duration / 1e9 AS duration_s, TraceId AS trace_id FROM otel.otel_traces WHERE SpanName = 'incident' AND ServiceName = 'sentinel' AND $__timeFilter(Timestamp) ORDER BY Timestamp DESC LIMIT 50"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "trace_id"
+      },
+      "properties": [
+       {
+        "id": "links",
+        "value": [
+         {
+          "title": "Open this trace",
+          "url": "/d/sentinel-agents/sentinel-agent-observability?var-trace_id=${__data.fields.trace_id}&${__url_time_range}"
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "outcome"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-text"
+        }
+       },
+       {
+        "id": "mappings",
+        "value": [
+         {
+          "type": "value",
+          "options": {
+           "resolved": {
+            "color": "green",
+            "index": 0
+           },
+           "failed": {
+            "color": "red",
+            "index": 1
+           },
+           "awaiting_approval": {
+            "color": "orange",
+            "index": 2
+           }
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "contain_s"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "s"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "duration_s"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "s"
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "transformations": []
+  },
+  {
+   "id": 9,
+   "type": "row",
+   "title": "Selected incident trace (pick one in the trace_id dropdown above)",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 13,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 10,
+   "type": "traces",
+   "title": "Agent trace: detection → investigation → planning → sandbox → execution → verification",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 14,
+    "w": 24,
+    "h": 14
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 3,
+     "rawSql": "SELECT TraceId AS traceID, SpanId AS spanID, ParentSpanId AS parentSpanID, ServiceName AS serviceName, SpanName AS operationName, multiply(toUnixTimestamp64Nano(Timestamp), 0.000001) AS startTime, multiply(Duration, 0.000001) AS duration, arrayMap(key -> map('key', key, 'value', SpanAttributes[key]), mapKeys(SpanAttributes)) AS tags, arrayMap(key -> map('key', key, 'value', ResourceAttributes[key]), mapKeys(ResourceAttributes)) AS serviceTags, if(StatusCode = 'Error', 2, 0) AS statusCode, StatusMessage AS statusMessage, arrayMap((name, ts, attrs) -> tuple(multiply(toUnixTimestamp64Nano(ts), 0.000001), map('event', name), attrs)::Tuple(timestamp Float64, fields Map(String, String), attrs Map(String, String)), Events.Name, Events.Timestamp, Events.Attributes) AS logs FROM otel.otel_traces WHERE TraceId = '${trace_id}' ORDER BY startTime"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {},
+   "transformations": []
+  },
+  {
+   "id": 11,
+   "type": "barchart",
+   "title": "Where the time went (this trace)",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 28,
+    "w": 9,
+    "h": 10
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT SpanName AS span, round(sum(Duration) / 1e6, 1) AS ms FROM otel.otel_traces WHERE TraceId = '${trace_id}' AND SpanName NOT IN ('incident') GROUP BY SpanName ORDER BY ms DESC LIMIT 15"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ms",
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "xField": "span",
+    "orientation": "horizontal",
+    "showValue": "auto",
+    "stacking": "none",
+    "legend": {
+     "showLegend": true,
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "xTickLabelRotation": 0,
+    "barWidth": 0.7,
+    "groupWidth": 0.7
+   },
+   "transformations": []
+  },
+  {
+   "id": 12,
+   "type": "table",
+   "title": "Sandbox attempts (this trace) — ablation pins the culprit action",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 9,
+    "y": 28,
+    "w": 15,
+    "h": 10
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT SpanAttributes['sentinel.attempt'] AS attempt, if(SpanAttributes['sentinel.passed'] = 'true', 'PASS', 'FAIL') AS result, concat(SpanAttributes['sentinel.checks_failed'], '/', SpanAttributes['sentinel.checks_total']) AS failed, SpanAttributes['sentinel.failed_checks'] AS failed_checks, SpanAttributes['sentinel.culprits'] AS culprits, round(Duration / 1e6, 1) AS ms FROM otel.otel_traces WHERE TraceId = '${trace_id}' AND SpanName = 'sandbox.attempt' ORDER BY Timestamp"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "result"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-background"
+        }
+       },
+       {
+        "id": "mappings",
+        "value": [
+         {
+          "type": "value",
+          "options": {
+           "PASS": {
+            "color": "green",
+            "index": 0
+           },
+           "FAIL": {
+            "color": "red",
+            "index": 1
+           }
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "transformations": []
+  },
+  {
+   "id": 13,
+   "type": "logs",
+   "title": "Agent log (this trace) — every line is correlated to its span",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 38,
+    "w": 24,
+    "h": 12
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 2,
+     "rawSql": "SELECT Timestamp AS timestamp, concat('[', LogAttributes['sentinel.agent'], '] ', Body) AS body, lower(SeverityText) AS level, LogAttributes['sentinel.kind'] AS kind, LogAttributes['sentinel.sim_time'] AS sim_time, LogAttributes['sentinel.evidence_ids'] AS evidence FROM otel.otel_logs WHERE TraceId = '${trace_id}' ORDER BY Timestamp"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "showTime": true,
+    "wrapLogMessage": true,
+    "sortOrder": "Ascending",
+    "enableLogDetails": true,
+    "dedupStrategy": "none",
+    "showLabels": false
+   },
+   "transformations": []
+  },
+  {
+   "id": 14,
+   "type": "row",
+   "title": "LLM & tools across all incidents (GenAI semantic conventions)",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 50,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 15,
+   "type": "timeseries",
+   "title": "LLM latency by agent",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 51,
+    "w": 12,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 0,
+     "rawSql": "SELECT $__timeInterval(Timestamp) AS time, splitByChar('.', SpanAttributes['sentinel.llm.purpose'])[1] AS agent, avg(Duration) / 1e6 AS latency_ms FROM otel.otel_traces WHERE SpanAttributes['gen_ai.system'] = 'openai' AND $__timeFilter(Timestamp) GROUP BY time, agent ORDER BY time"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ms",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "points",
+      "fillOpacity": 10,
+      "lineWidth": 2,
+      "showPoints": "auto",
+      "stacking": {
+       "mode": "none"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "showLegend": true,
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "transformations": []
+  },
+  {
+   "id": 16,
+   "type": "barchart",
+   "title": "Tokens by agent",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 51,
+    "w": 12,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT splitByChar('.', SpanAttributes['sentinel.llm.purpose'])[1] AS agent, sum(toUInt64OrZero(SpanAttributes['gen_ai.usage.input_tokens'])) AS input, sum(toUInt64OrZero(SpanAttributes['gen_ai.usage.output_tokens'])) AS output FROM otel.otel_traces WHERE SpanAttributes['gen_ai.system'] = 'openai' AND $__timeFilter(Timestamp) GROUP BY agent ORDER BY input DESC"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "xField": "agent",
+    "orientation": "horizontal",
+    "showValue": "auto",
+    "stacking": "normal",
+    "legend": {
+     "showLegend": true,
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "xTickLabelRotation": 0,
+    "barWidth": 0.7,
+    "groupWidth": 0.7
+   },
+   "transformations": []
+  },
+  {
+   "id": 17,
+   "type": "table",
+   "title": "Tool calls",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 60,
+    "w": 12,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT SpanAttributes['sentinel.tool.name'] AS tool, SpanAttributes['sentinel.tool.chosen_by'] AS chosen_by, count() AS calls, round(avg(Duration) / 1e6, 2) AS avg_ms, round(quantile(0.95)(Duration) / 1e6, 2) AS p95_ms, countIf(StatusCode = 'Error') AS errors FROM otel.otel_traces WHERE SpanName LIKE 'tool %' AND $__timeFilter(Timestamp) GROUP BY tool, chosen_by ORDER BY calls DESC"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "transformations": []
+  },
+  {
+   "id": 18,
+   "type": "table",
+   "title": "Errors & failed spans",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 60,
+    "w": 12,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT Timestamp AS time, SpanName AS span, StatusMessage AS message, SpanAttributes['sentinel.incident_id'] AS incident, TraceId AS trace_id FROM otel.otel_traces WHERE StatusCode = 'Error' AND $__timeFilter(Timestamp) ORDER BY Timestamp DESC LIMIT 50"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "trace_id"
+      },
+      "properties": [
+       {
+        "id": "links",
+        "value": [
+         {
+          "title": "Open this trace",
+          "url": "/d/sentinel-agents/sentinel-agent-observability?var-trace_id=${__data.fields.trace_id}&${__url_time_range}"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "transformations": []
+  }
+ ],
+ "templating": {
+  "list": [
+   {
+    "name": "trace_id",
+    "label": "incident trace",
+    "type": "query",
+    "datasource": {
+     "type": "grafana-clickhouse-datasource",
+     "uid": "clickhouse"
+    },
+    "refresh": 2,
+    "query": "SELECT TraceId AS value, concat(SpanAttributes['sentinel.incident_id'], ' · ', formatDateTime(Timestamp, '%H:%i:%S'), ' · ', SpanAttributes['sentinel.outcome']) AS text FROM otel.otel_traces WHERE SpanName = 'incident' AND ServiceName = 'sentinel' AND $__timeFilter(Timestamp) ORDER BY Timestamp DESC LIMIT 50",
+    "definition": "latest incident traces",
+    "sort": 0,
+    "current": {},
+    "options": [],
+    "hide": 0,
+    "includeAll": false,
+    "multi": false
+   }
+  ]
+ },
+ "links": [
+  {
+   "title": "Sentinel dashboards",
+   "type": "dashboards",
+   "tags": [
+    "sentinel"
+   ],
+   "asDropdown": false,
+   "includeVars": false,
+   "keepTime": false
+  }
+ ],
+ "annotations": {
+  "list": []
+ }
+}

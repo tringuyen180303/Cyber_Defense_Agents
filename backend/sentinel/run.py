@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
-from . import config
+from . import config, telemetry
 from . import knowledge as kb
 from .cloudtrail import short_resource
 from .detectors import DetectionEngine
@@ -62,6 +62,7 @@ class Run:
                 code_scanner=semgrep_label(),
                 threat_intel="offline intel fixture",
                 executor="simulated AWS IAM (policy-evaluator sandbox)",
+                observability="OpenTelemetry → ClickHouse (Grafana)" if config.OTEL_ENDPOINT else "off",
             ),
         )
 
@@ -84,6 +85,10 @@ class Run:
     def log(self, agent: str, kind: str, message: str, data: dict[str, Any] | None = None) -> None:
         with self.lock:
             self.state.agent_log.append(AgentStep(t=self.now(), agent=agent, kind=kind, message=message, data=data))
+        telemetry.agent_log(self.state.run_id, agent, kind, message, **{
+            "sentinel.incident_id": self.state.incident.id if self.state.incident else None,
+            "sentinel.sim_time": self.now().isoformat(),
+            "sentinel.evidence_ids": (data or {}).get("evidence_ids") or (data or {}).get("evidence_id")})
         self.changed()
 
     def add_evidence(self, source: str, summary: str, raw: Any, ts: datetime | None = None) -> str:

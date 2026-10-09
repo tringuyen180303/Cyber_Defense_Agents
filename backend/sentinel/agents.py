@@ -10,7 +10,7 @@ from collections import Counter, OrderedDict
 from datetime import datetime, timedelta
 from typing import Any
 
-from . import config
+from . import config, telemetry
 from . import knowledge as kb
 from .actions import CATALOG, Executor, risk_for, target_for, title_for, validate
 from .cloudtrail import parse_time, short_resource
@@ -228,7 +228,10 @@ class Investigator:
                    "threat_intel": f"intel:{args.get('ip')}", "scan_ci_repo": "semgrep",
                    "account_wide_hunt": "hunt"}[name]
             if key not in self.cache:
-                result = getattr(self, name)(**args)
+                with telemetry.span(f"tool {name}", **{"sentinel.tool.name": name, "sentinel.tool.args": json.dumps(args),
+                                                       "sentinel.tool.chosen_by": "required"}) as sp:
+                    result = getattr(self, name)(**args)
+                    sp.set(**{"sentinel.evidence_id": (result or {}).get("evidence_id")})
                 self._on_tool(name, args, result)
 
     # ---- hypothesis scoring (deterministic) -----------------------------------------------------
@@ -377,6 +380,7 @@ class Investigator:
                 "reasoning": "Automation is repetitive and stays within its baseline; this activity is exploratory."},
         }
 
+    @telemetry.traced("agent.investigator")
     def run_agent(self) -> None:
         run, inc = self.run, self.run.incident
         run.log(self.NAME, "start", f"Investigating {inc.principal}: gathering baseline, deployments, intel, code")
@@ -393,7 +397,8 @@ class Investigator:
             alert = {"principal": inc.principal, "signals": [s.model_dump(mode="json") for s in inc.signals],
                      "attacker_ips": inc.attacker_ips, "suspicious_activity": _brief_events(run.attacker_events())}
             try:
-                llm_out = run.llm.tool_loop(system, json.dumps(alert, default=str), self._tools(), self._on_tool)
+                llm_out = run.llm.tool_loop(system, json.dumps(alert, default=str), self._tools(), self._on_tool,
+                                            operation="investigator")
             except Exception as exc:  # noqa: BLE001
                 run.log(self.NAME, "error", f"LLM investigation failed ({exc}); using deterministic reasoning")
         self._gather_required()
@@ -424,6 +429,9 @@ class Investigator:
         with run.lock:
             inc.hypotheses = hyps
         top = hyps[0]
+        telemetry.annotate(**{"sentinel.hypothesis": top.id, "sentinel.hypothesis_confidence": top.confidence,
+                              "sentinel.claims_supporting": len(top.supporting), "sentinel.claims_counter": len(top.counter),
+                              "sentinel.evidence_items": len(run.state.evidence), "sentinel.llm_used": bool(llm_by_id)})
         run.log(self.NAME, "result", f"Leading hypothesis: {top.title} ({top.confidence:.0%}); "
                                      f"{len(top.supporting)} supporting, {len(top.counter)} counter-evidence")
 
@@ -449,6 +457,7 @@ MITRE = {
 }
 
 
+@telemetry.traced("agent.reconstruction")
 def reconstruct(run: Run) -> None:
     name = "Reconstruction"
     run.log(name, "start", "Mapping attributed CloudTrail activity to MITRE ATT&CK")
@@ -483,7 +492,7 @@ def reconstruct(run: Run) -> None:
             out = run.llm.json(
                 "You are a threat analyst. Write a 2-3 sentence attack narrative from this ATT&CK timeline for an "
                 "incident report. Be factual; no speculation beyond the data. JSON: {\"narrative\": str}",
-                json.dumps([t.model_dump(mode="json") for t in entries]))
+                json.dumps([t.model_dump(mode="json") for t in entries]), operation="reconstruction.narrative")
             narrative = out.get("narrative") or narrative
         except Exception as exc:  # noqa: BLE001
             run.log(name, "error", f"LLM narrative failed ({exc}); using template")
@@ -496,6 +505,7 @@ def reconstruct(run: Run) -> None:
 # Blast radius
 # ================================================================================================
 
+@telemetry.traced("agent.blast_radius")
 def blast_radius(run: Run) -> None:
     name = "Blast Radius"
     inc = run.incident
@@ -647,7 +657,7 @@ class Planner:
                                                                     if k != "new_policy"}} for a in current]
             payload["sandbox_failures"] = failures
         try:
-            out = self.run.llm.json(system, json.dumps(payload, default=str))
+            out = self.run.llm.json(system, json.dumps(payload, default=str), operation="planner")
         except Exception as exc:  # noqa: BLE001
             self.run.log(self.NAME, "error", f"LLM planning failed ({exc}); using deterministic planner")
             return None
@@ -688,6 +698,7 @@ class Planner:
             acts.append(req)
             added.append(req)
         if added:
+            telemetry.add_event("coverage_guardrail", **{"sentinel.added": [f"{a.kind}:{a.target}" for a in added]})
             self.run.log(self.NAME, "decision", "Coverage guardrail added " + "; ".join(
                 f"{a.id} {a.kind} ({a.target})" for a in added) + " — LLM plan left them uncontained")
         return acts
@@ -712,6 +723,7 @@ class Planner:
                 run.log(self.NAME, "decision", f"Drop {culprit.id}: breaks legitimate workload")
         return new
 
+    @telemetry.traced("agent.planner.plan")
     def plan(self) -> list[Action]:
         self.run.log(self.NAME, "start", "Drafting minimum containment plan from evidence and blast radius")
         acts = self._llm(1, None, []) if self.run.llm.available else None
@@ -719,6 +731,7 @@ class Planner:
         self._publish(acts, 1)
         return acts
 
+    @telemetry.traced("agent.planner.revise")
     def revise(self, current: list[Action], failures: list[dict], culprits: list[Action], attempt: int) -> list[Action]:
         run = self.run
         run.log(self.NAME, "start", f"Revising plan: {len(failures)} sandbox check(s) failed; culprit(s): "
@@ -751,6 +764,10 @@ class Planner:
         with run.lock:
             run.incident.actions = [a for a in run.incident.actions if a.status == "superseded"] + acts
         tiers = Counter(a.risk for a in acts)
+        telemetry.annotate(**{"sentinel.attempt": attempt, "sentinel.actions": [f"{a.id}:{a.kind}" for a in acts],
+                              "sentinel.tier_safe": tiers.get("safe", 0), "sentinel.tier_review": tiers.get("review", 0),
+                              "sentinel.tier_dangerous": tiers.get("dangerous", 0),
+                              "sentinel.known_bad": [f"{k}:{t}" for k, t in self.known_bad]})
         run.log(self.NAME, "result", f"Plan v{attempt}: {len(acts)} actions — {tiers.get('safe', 0)} safe, "
                                      f"{tiers.get('review', 0)} need review, {tiers.get('dangerous', 0)} blocked")
 
@@ -784,6 +801,7 @@ class Verifier:
             applied.append(a)
         return sb, applied
 
+    @telemetry.traced("sandbox.attempt")
     def sandbox(self, actions: list[Action], attempt: int) -> tuple[bool, list[dict], list[Action]]:
         run = self.run
         run.log(self.NAME, "start", f"Sandbox attempt {attempt}: cloning production IAM, applying "
@@ -802,7 +820,9 @@ class Verifier:
                     continue
                 sb2, without = self._apply_all([x for x in applied if x is not a])
                 still = {c.name for c in self._suite(sb2, without, "sandbox", attempt) if not c.passed}
-                if any(f not in still for f in failing if not f.startswith(("No compromised", "Stolen"))):
+                culprit = any(f not in still for f in failing if not f.startswith(("No compromised", "Stolen")))
+                telemetry.add_event("ablation", **{"sentinel.action": f"{a.id}:{a.kind}", "sentinel.culprit": culprit})
+                if culprit:
                     culprits.append(a)
             for a in applied:
                 a.status = "sandbox_fail"
@@ -815,9 +835,16 @@ class Verifier:
                 a.status = "sandbox_pass"
             run.log(self.NAME, "result", f"PASS — {len(checks)}/{len(checks)} checks: attack blocked, CI and "
                                          f"production API healthy")
+        telemetry.annotate(**{"sentinel.attempt": attempt, "sentinel.passed": not failed,
+                              "sentinel.checks_total": len(checks), "sentinel.checks_failed": len(failed),
+                              "sentinel.failed_checks": [c.name for c in failed],
+                              "sentinel.culprits": [f"{a.id}:{a.kind}" for a in culprits]})
+        if failed:
+            telemetry.fail_current(f"{len(failed)}/{len(checks)} checks failed")
         run.changed()
         return not failed, [c.model_dump(include={"name", "detail"}) for c in failed], culprits
 
+    @telemetry.traced("verify.production")
     def production(self, actions: list[Action], attempt: int) -> bool:
         run = self.run
         applied = [a for a in actions if a.status == "executed"]
@@ -825,17 +852,23 @@ class Verifier:
         with run.lock:
             run.incident.verification += checks
         ok = all(c.passed for c in checks)
+        telemetry.annotate(**{"sentinel.passed": ok, "sentinel.checks_total": len(checks),
+                              "sentinel.checks_failed": sum(not c.passed for c in checks)})
         run.log(self.NAME, "result", f"Production verification {'PASS' if ok else 'FAIL'} — "
                                      f"{sum(c.passed for c in checks)}/{len(checks)} checks")
         return ok
 
 
+@telemetry.traced("phase.execute")
 def execute(run: Run, actions: list[Action], verifier: Verifier) -> None:
     ex = Executor(run.store.observed_permissions, run.state.evidence, run.run_dir)
     for a in actions:
         if a.status != "approved":
             continue
-        a.rollback = ex.apply(run.prod, a, run.now())
+        with telemetry.span(f"action {a.kind}", **{"sentinel.action_id": a.id, "sentinel.action_kind": a.kind,
+                                                   "sentinel.risk": a.risk, "sentinel.target": a.target,
+                                                   "sentinel.attempt": a.attempt}):
+            a.rollback = ex.apply(run.prod, a, run.now())
         a.status, a.executed_at = "executed", run.now()
         run.log("Executor", "result", f"{a.id} executed in production: {a.title}",
                 {"rollback": {k: v for k, v in (a.rollback or {}).items() if k != "previous_policy"}})
@@ -845,6 +878,7 @@ def execute(run: Run, actions: list[Action], verifier: Verifier) -> None:
 # Post-incident blast radius + postmortem
 # ================================================================================================
 
+@telemetry.traced("agent.blast_radius.after")
 def finalize_blast_radius(run: Run) -> None:
     inc = run.incident
     now = run.now()
@@ -856,10 +890,13 @@ def finalize_blast_radius(run: Run) -> None:
         inc.blast_radius.paths_after = paths
     before = len(inc.blast_radius.paths_before)
     red = 1 - len(paths) / before if before else 0
+    telemetry.annotate(**{"sentinel.paths_before": before, "sentinel.paths_after": len(paths),
+                          "sentinel.paths_compromised_after": sum(p.compromised_credential for p in paths)})
     run.log("Blast Radius", "result", f"Attack paths {before} → {len(paths)} ({red:.0%} reduction); "
                                       f"{sum(p.compromised_credential for p in paths)} via compromised credentials")
 
 
+@telemetry.traced("agent.postmortem")
 def postmortem(run: Run) -> None:
     name = "Postmortem"
     inc = run.incident
@@ -929,7 +966,7 @@ def postmortem(run: Run) -> None:
             out = run.llm.json(
                 "You are an SRE writing a blameless postmortem. Improve the clarity of this markdown report without "
                 "changing any facts, numbers, or [E#] evidence references. Keep all sections. "
-                "JSON: {\"markdown\": str}", report)
+                "JSON: {\"markdown\": str}", report, operation="postmortem")
             report = out.get("markdown") or report
         except Exception as exc:  # noqa: BLE001
             run.log(name, "error", f"LLM postmortem failed ({exc}); using template")

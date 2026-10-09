@@ -14,7 +14,11 @@ RUNS_DIR = ROOT / "runs"
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("SENTINEL_MODEL", "gpt-4.1")
+LLM_PRICE = os.getenv("SENTINEL_LLM_PRICE", "")
 CLICKHOUSE_URL = os.getenv("CLICKHOUSE_URL", "")  # e.g. http://default:@localhost:8123
+OTEL_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "").rstrip("/")  # e.g. http://localhost:14318
+GRAFANA_URL = os.getenv("SENTINEL_GRAFANA_URL", "http://localhost:3000" if OTEL_ENDPOINT else "").rstrip("/")
+ENVIRONMENT = os.getenv("SENTINEL_ENV", "demo")
 
 # Seconds of wall-clock per replayed event, and pause between agent steps (for a watchable demo).
 REPLAY_DELAY = float(os.getenv("SENTINEL_REPLAY_DELAY", "0.35"))

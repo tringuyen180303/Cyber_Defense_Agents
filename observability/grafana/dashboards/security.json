@@ -1,0 +1,746 @@
+{
+ "uid": "sentinel-security",
+ "title": "Sentinel · CloudTrail lake",
+ "description": "CloudTrail baseline + incident replays in ClickHouse; the same tables the agents query for detection and hunting.",
+ "tags": [
+  "sentinel"
+ ],
+ "timezone": "utc",
+ "schemaVersion": 39,
+ "version": 1,
+ "editable": true,
+ "graphTooltip": 1,
+ "time": {
+  "from": "2026-09-06T00:00:00.000Z",
+  "to": "2026-10-08T00:00:00.000Z"
+ },
+ "refresh": "",
+ "panels": [
+  {
+   "id": 1,
+   "type": "row",
+   "title": "CloudTrail lake",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 2,
+   "type": "stat",
+   "title": "Baseline events (30 days)",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT count() FROM sentinel.cloudtrail WHERE source = 'baseline'"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "transformations": []
+  },
+  {
+   "id": 3,
+   "type": "stat",
+   "title": "Identities profiled",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 4,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT uniq(principal) FROM sentinel.cloudtrail WHERE source = 'baseline'"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "transformations": []
+  },
+  {
+   "id": 4,
+   "type": "stat",
+   "title": "Incident replays ingested",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT uniq(source) FROM sentinel.cloudtrail WHERE source != 'baseline'"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "purple",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "transformations": []
+  },
+  {
+   "id": 5,
+   "type": "stat",
+   "title": "Never-seen source IPs",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT uniq(ip) FROM sentinel.cloudtrail WHERE source != 'baseline' AND ip NOT IN (SELECT DISTINCT ip FROM sentinel.cloudtrail WHERE source = 'baseline')"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "transformations": []
+  },
+  {
+   "id": 6,
+   "type": "stat",
+   "title": "Denied calls (incidents)",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT countIf(error != '') FROM sentinel.cloudtrail WHERE source = (SELECT max(source) FROM sentinel.cloudtrail WHERE source != 'baseline')"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 1
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "transformations": []
+  },
+  {
+   "id": 7,
+   "type": "stat",
+   "title": "Distinct baseline behaviors",
+   "description": "Distinct (identity, IP, action, resource) tuples — what the detectors compare against.",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 20,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT count() FROM (SELECT origin_user, ip, iam_action, resource_family FROM sentinel.cloudtrail WHERE source = 'baseline' GROUP BY ALL)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "thresholds"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "semi-dark-green",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center"
+   },
+   "transformations": []
+  },
+  {
+   "id": 8,
+   "type": "timeseries",
+   "title": "API calls per hour — baseline vs incident replay",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 5,
+    "w": 24,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 0,
+     "rawSql": "SELECT $__timeInterval(time) AS t, if(source = 'baseline', 'baseline (normal CI + prod)', if(ip IN (SELECT DISTINCT ip FROM sentinel.cloudtrail WHERE source = 'baseline'), 'incident window: known IPs', 'incident window: attacker IP')) AS series, count() AS calls FROM sentinel.cloudtrail WHERE $__timeFilter(time) AND (source = 'baseline' OR source = (SELECT max(source) FROM sentinel.cloudtrail WHERE source != 'baseline')) GROUP BY t, series ORDER BY t"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "bars",
+      "fillOpacity": 25,
+      "lineWidth": 2,
+      "showPoints": "auto",
+      "stacking": {
+       "mode": "normal"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "showLegend": true,
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "transformations": []
+  },
+  {
+   "id": 9,
+   "type": "row",
+   "title": "Hunting: what changed vs the baseline (latest incident replay)",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 14,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 10,
+   "type": "table",
+   "title": "Source IPs never seen in 30 days",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 15,
+    "w": 12,
+    "h": 7
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT ip, uniq(source) AS incidents, arrayStringConcat(groupUniqArray(principal), ', ') AS identities, count() AS calls, countIf(error != '') AS denied, min(time) AS first_seen, max(time) AS last_seen FROM sentinel.cloudtrail WHERE source != 'baseline' AND ip NOT IN (SELECT DISTINCT ip FROM sentinel.cloudtrail WHERE source = 'baseline') GROUP BY ip ORDER BY calls DESC"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "transformations": []
+  },
+  {
+   "id": 11,
+   "type": "table",
+   "title": "Actions an identity had never performed",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 15,
+    "w": 12,
+    "h": 7
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "WITH b AS (SELECT DISTINCT origin_user, iam_action FROM sentinel.cloudtrail WHERE source = 'baseline') SELECT l.origin_user AS identity, l.iam_action AS action, count() AS calls, countIf(l.error != '') AS denied FROM sentinel.cloudtrail AS l LEFT ANTI JOIN b USING (origin_user, iam_action) WHERE l.source = (SELECT max(source) FROM sentinel.cloudtrail WHERE source != 'baseline') GROUP BY identity, action ORDER BY calls DESC"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "transformations": []
+  },
+  {
+   "id": 12,
+   "type": "table",
+   "title": "Attacker kill chain (calls from never-seen IPs)",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 22,
+    "w": 24,
+    "h": 10
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT time, event_name, principal, principal_type AS type, access_key, resource, if(error = '', 'ok', error) AS result, user_agent FROM sentinel.cloudtrail WHERE source = (SELECT max(source) FROM sentinel.cloudtrail WHERE source != 'baseline') AND ip NOT IN (SELECT DISTINCT ip FROM sentinel.cloudtrail WHERE source = 'baseline') ORDER BY time"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "result"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-text"
+        }
+       },
+       {
+        "id": "mappings",
+        "value": [
+         {
+          "type": "value",
+          "options": {
+           "ok": {
+            "color": "green",
+            "index": 0
+           }
+          }
+         },
+         {
+          "type": "regex",
+          "options": {
+           "pattern": ".+",
+           "result": {
+            "color": "red",
+            "index": 1
+           }
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "transformations": []
+  },
+  {
+   "id": 13,
+   "type": "row",
+   "title": "Baseline behavior",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 32,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 14,
+   "type": "barchart",
+   "title": "Hour-of-day activity by identity (baseline)",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 33,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT toString(toHour(time)) AS hour_utc, countIf(origin_user = 'ci-deployer') AS ci_deployer, countIf(principal = 'prod-api-role') AS prod_api, countIf(origin_user = 'alice-admin') AS alice_admin FROM sentinel.cloudtrail WHERE source = 'baseline' GROUP BY toHour(time) AS h, hour_utc ORDER BY h"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "palette-classic"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "xField": "hour_utc",
+    "orientation": "vertical",
+    "showValue": "auto",
+    "stacking": "normal",
+    "legend": {
+     "showLegend": true,
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "xTickLabelRotation": 0,
+    "barWidth": 0.7,
+    "groupWidth": 0.7
+   },
+   "transformations": []
+  },
+  {
+   "id": 15,
+   "type": "table",
+   "title": "Top actions per identity (baseline)",
+   "description": "",
+   "datasource": {
+    "type": "grafana-clickhouse-datasource",
+    "uid": "clickhouse"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 33,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-clickhouse-datasource",
+      "uid": "clickhouse"
+     },
+     "editorType": "sql",
+     "format": 1,
+     "rawSql": "SELECT origin_user AS identity, iam_action AS action, count() AS calls, uniq(ip) AS ips, uniq(resource_family) AS resources FROM sentinel.cloudtrail WHERE source = 'baseline' GROUP BY identity, action ORDER BY calls DESC LIMIT 25"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false
+    }
+   },
+   "transformations": []
+  }
+ ],
+ "templating": {
+  "list": []
+ },
+ "links": [
+  {
+   "title": "Sentinel dashboards",
+   "type": "dashboards",
+   "tags": [
+    "sentinel"
+   ],
+   "asDropdown": false,
+   "includeVars": false,
+   "keepTime": false
+  }
+ ],
+ "annotations": {
+  "list": []
+ }
+}

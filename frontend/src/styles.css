@@ -241,3 +241,5 @@ td { padding: 3px 8px; border-top: 1px solid var(--line); }
 .yaml { max-height: 300px; }
 .ver { padding: 3px 0; }
 button.tiny { padding: 0 6px; font-size: 10px; margin-left: 6px; }
+.trace-link { font-size: 12px; color: #c4b5fd; border: 1px solid #4c1d95; border-radius: 6px; padding: 4px 8px; text-decoration: none; }
+.trace-link:hover { background: rgba(124, 58, 237, 0.15); }

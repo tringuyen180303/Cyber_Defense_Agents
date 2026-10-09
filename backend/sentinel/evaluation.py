@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Callable
 
 from . import knowledge as kb
+from . import telemetry
 from .commander import run_incident
 from .knowledge import Knowledge
 from .run import Run
@@ -37,6 +38,11 @@ class ScenarioResult:
 
 
 def run_scenario(sc: Scenario, k: Knowledge) -> tuple[ScenarioResult, Run]:
+    with telemetry.quiet():
+        return _run_scenario(sc, k)
+
+
+def _run_scenario(sc: Scenario, k: Knowledge) -> tuple[ScenarioResult, Run]:
     run = Run(records=sc.records, knowledge=k, use_llm=False, fast=True, auto_approve=True, persist=False,
               scenario_id=sc.id)
     err = None
@@ -124,6 +130,7 @@ def print_card(card: dict[str, Any]) -> None:
 
 
 def main() -> None:
+    telemetry.init()
     p = argparse.ArgumentParser()
     p.add_argument("--version", type=int)
     p.add_argument("--save", action="store_true", help="store as the version's scorecard")

@@ -11,6 +11,7 @@ import yaml
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from . import config
 from . import knowledge as kb
 from .evaluation import evaluate
 from .scenarios import DISCOVERED_DIR, load_suite
@@ -87,6 +88,7 @@ async def overview() -> dict[str, Any]:
         "current": kb.current_version(), "versions": versions, "pending": pending, "running": state.running,
         "log": state.log[-150:], "changelog": kb.changelog(), "memories": len(kb.memories()),
         "recent_memories": kb.memories()[-5:], "knowledge_yaml": kb.load().dump(), "matrix": matrix,
+        "grafana_url": f"{config.GRAFANA_URL}/d/sentinel-learning/sentinel-self-improvement" if config.GRAFANA_URL else None,
     }
 
 

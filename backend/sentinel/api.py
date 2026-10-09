@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
+from . import telemetry
 from .commander import decide, run_incident
 from .learning_api import router as learning_router
 from .run import Run
@@ -58,6 +59,7 @@ hub = Hub()
 
 @app.on_event("startup")
 async def startup() -> None:
+    telemetry.init()
     hub.loop = asyncio.get_running_loop()
     await asyncio.to_thread(get_store)
 

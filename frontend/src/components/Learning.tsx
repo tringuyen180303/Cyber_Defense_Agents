@@ -37,6 +37,7 @@ interface LearningData {
   changelog: string;
   memories: number;
   knowledge_yaml: string;
+  grafana_url?: string | null;
   matrix: null | {
     scenarios: { id: string; label: string; source: string; description: string }[];
     versions: Record<string, { metrics: Metrics; results: Record<string, Cell> }>;
@@ -98,6 +99,11 @@ export function Learning() {
           <button disabled={busy} onClick={() => post("/api/learning/reset")}>
             Reset to v1
           </button>
+          {d.grafana_url && (
+            <a className="trace-link" href={d.grafana_url} target="_blank" rel="noreferrer">
+              Grafana ↗
+            </a>
+          )}
           {busy && <span className="phase phase-verifying">{d.running} running…</span>}
         </div>
       </div>
