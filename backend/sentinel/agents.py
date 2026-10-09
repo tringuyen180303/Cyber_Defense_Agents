@@ -530,6 +530,8 @@ class Planner:
     def __init__(self, run: Run) -> None:
         self.run = run
         self.n = 0
+        self.quiet = False
+        self.known_bad: dict[tuple[str, str], Action] = {}
 
     def conditions(self, params: dict[str, Any]) -> set[str]:
         run = self.run
@@ -547,8 +549,9 @@ class Planner:
             w = pb.get("when", {})
             if w.get("kind") == kind and set(w.get("conditions", [])) <= self.conditions(params):
                 new_kind = pb["then"]["kind"]
-                self.run.log(self.NAME, "decision", f"Applied learned playbook {pb['id']} (from "
-                                                    f"{pb.get('learned_from', '?')}): {kind} → {new_kind}")
+                if not self.quiet:
+                    self.run.log(self.NAME, "decision", f"Applied learned playbook {pb['id']} (from "
+                                                        f"{pb.get('learned_from', '?')}): {kind} → {new_kind}")
                 return (None if new_kind == "skip" else new_kind), \
                     f"Playbook {pb['id']}: {pb.get('reason', '')} (learned from {pb.get('learned_from', '?')})"
         return kind, rationale
@@ -656,9 +659,63 @@ class Planner:
             acts = [snap] + [a for a in acts if a.kind != "snapshot_evidence"]
         return acts
 
+    @staticmethod
+    def _covers(a: Action, kind: str, params: dict[str, Any]) -> bool:
+        if kind == "deactivate_access_key":
+            return a.kind in ("deactivate_access_key", "rotate_access_key") and \
+                a.params.get("key_id") == params["key_id"]
+        keys = {"revoke_role_sessions": "role", "rotate_secret": "secret_arn"}
+        return a.kind == kind and a.params.get(keys[kind]) == params[keys[kind]]
+
+    def _ensure_coverage(self, acts: list[Action], attempt: int,
+                         excluded: list[Action] | None = None) -> list[Action]:
+        """LLM plans are advisory: every compromised credential, abused role and stolen secret must be handled."""
+        excluded = excluded or []
+        n, self.quiet = self.n, True
+        try:
+            required = [a for a in self._offline(attempt)
+                        if a.kind in ("deactivate_access_key", "rotate_access_key", "revoke_role_sessions",
+                                      "rotate_secret")]
+        finally:
+            self.n, self.quiet = n, False
+        added = []
+        for req in required:
+            kind = "deactivate_access_key" if req.kind == "rotate_access_key" else req.kind
+            if any(self._covers(a, kind, req.params) for a in acts + excluded):
+                continue
+            self.n += 1
+            req = req.model_copy(update={"id": f"A{self.n}"})
+            acts.append(req)
+            added.append(req)
+        if added:
+            self.run.log(self.NAME, "decision", "Coverage guardrail added " + "; ".join(
+                f"{a.id} {a.kind} ({a.target})" for a in added) + " — LLM plan left them uncontained")
+        return acts
+
+    def _repair(self, acts: list[Action], attempt: int) -> list[Action]:
+        """Apply every sandbox-proven repair so far, whatever the LLM proposed this round."""
+        run = self.run
+        ci_key = run.prod.ci_credential["key_id"]
+        new = [a for a in acts if (a.kind, a.target) not in self.known_bad]
+        for culprit in self.known_bad.values():
+            if culprit.kind == "deactivate_access_key" and culprit.params["key_id"] == ci_key:
+                if any(a.kind == "rotate_access_key" and a.params.get("key_id") == ci_key for a in new):
+                    continue
+                rep = self._make("rotate_access_key", dict(culprit.params),
+                                 f"{culprit.id} broke production CI (key still in use). Rotate instead: issue a new "
+                                 f"key, update the GitHub secret, then deactivate the leaked key",
+                                 culprit.evidence_ids, attempt, use_playbooks=False)
+                new.append(rep)
+                run.log(self.NAME, "decision", f"Replace {culprit.id} (deactivate) with {rep.id} (rotate + update CI "
+                                               f"secret)")
+            elif any((a.kind, a.target) == (culprit.kind, culprit.target) for a in acts):
+                run.log(self.NAME, "decision", f"Drop {culprit.id}: breaks legitimate workload")
+        return new
+
     def plan(self) -> list[Action]:
         self.run.log(self.NAME, "start", "Drafting minimum containment plan from evidence and blast radius")
-        acts = (self._llm(1, None, []) if self.run.llm.available else None) or self._offline(1)
+        acts = self._llm(1, None, []) if self.run.llm.available else None
+        acts = self._ensure_coverage(acts, 1) if acts else self._offline(1)
         self._publish(acts, 1)
         return acts
 
@@ -668,21 +725,11 @@ class Planner:
                                     f"{', '.join(a.id for a in culprits) or 'unknown'}")
         new = self._llm(attempt, failures, current) if run.llm.available else None
         if new is None:
-            new = []
-            for a in current:
-                if a in culprits and a.kind == "deactivate_access_key" and \
-                        a.params["key_id"] == run.prod.ci_credential["key_id"]:
-                    rep = self._make("rotate_access_key", dict(a.params),
-                                     f"{a.id} broke production CI (key still in use). Rotate instead: issue a new key, "
-                                     f"update the GitHub secret, then deactivate the leaked key", a.evidence_ids,
-                                     attempt, use_playbooks=False)
-                    new.append(rep)
-                    run.log(self.NAME, "decision", f"Replace {a.id} (deactivate) with {rep.id} (rotate + update CI "
-                                                   f"secret)")
-                elif a in culprits:
-                    run.log(self.NAME, "decision", f"Drop {a.id}: breaks legitimate workload")
-                else:
-                    new.append(a.model_copy(update={"attempt": attempt, "status": "proposed"}))
+            new = [a.model_copy(update={"attempt": attempt, "status": "proposed"}) for a in current]
+        for c in culprits:
+            self.known_bad[(c.kind, c.target)] = c
+        new = self._repair(new, attempt)
+        new = self._ensure_coverage(new, attempt, excluded=list(self.known_bad.values()))
         for c in culprits:
             rep = next((n for n in new if n.target == c.target and n.kind != c.kind), None)
             run.repairs.append({
