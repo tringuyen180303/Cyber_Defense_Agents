@@ -8,3 +8,6 @@ runs/
 scenario/fixtures/baseline_events.jsonl
 eval/results/
 .DS_Store
+knowledge/memory/
+knowledge/pending.yaml
+frontend/tsconfig.tsbuildinfo

@@ -1,0 +1,85 @@
+version: 1
+parent: null
+created: "2026-10-09T00:00:00Z"
+summary: Initial hand-written detectors; no learned playbooks.
+
+# Incident opens when the noisy-OR of distinct fired detectors reaches this and at least
+# `min_detectors` distinct detectors fired for the same identity.
+open_threshold: 0.6
+min_detectors: 2
+sev1_threshold: 0.85
+
+# Event features available to rules (computed deterministically in detectors.py):
+#   new_network, new_user_agent, off_hours, iam_read, iam_write, key_created, fresh_key,
+#   data_action, first_time_resource, critical_resource, succeeded, denied,
+#   suspicious_context, assumed_role
+detectors:
+  - id: new_source_network
+    kind: rule
+    weight: 0.30
+    severity: 6
+    all_of: [new_network]
+    subject: [network]
+    title: "{who} active from never-seen network {network} ({ip})"
+
+  - id: new_user_agent
+    kind: rule
+    weight: 0.20
+    severity: 4
+    all_of: [new_user_agent]
+    subject: [ua]
+    title: "Unfamiliar client for {who}: {ua}"
+
+  - id: rapid_iam_enumeration
+    kind: burst
+    weight: 0.35
+    severity: 7
+    all_of: [iam_read]
+    window_s: 120
+    min_count: 3
+    subject: []
+    title: "{n} IAM discovery calls in {secs}s by {who}"
+
+  - id: access_key_created
+    kind: rule
+    weight: 0.40
+    severity: 8
+    all_of: [key_created]
+    subject: [new_key]
+    title: "New long-lived access key {new_key} created for {who}"
+
+  - id: fresh_key_usage
+    kind: rule
+    weight: 0.30
+    severity: 7
+    all_of: [fresh_key]
+    subject: [origin_key]
+    title: "Key {origin_key} used {age}s after creation ({action})"
+
+  - id: first_time_resource_access
+    kind: rule
+    weight: 0.25
+    severity: 6
+    all_of: [data_action, first_time_resource]
+    subject: [resource]
+    title: "{principal} accessed {resource} for the first time in 30 days"
+
+  - id: sensitive_resource_access
+    kind: rule
+    weight: 0.35
+    severity: 8
+    all_of: [data_action, critical_resource, succeeded]
+    any_of: [first_time_resource, suspicious_context]
+    subject: [key, resource]
+    title: "Critical asset {resource} read via {key} from {ip}"
+
+  - id: access_denied_sensitive
+    kind: rule
+    weight: 0.20
+    severity: 6
+    all_of: [denied, critical_resource]
+    subject: [resource]
+    title: "Denied attempt on {resource} by {principal}"
+
+# Planner playbooks: condition → preferred action, learned from sandbox failures.
+playbooks: []

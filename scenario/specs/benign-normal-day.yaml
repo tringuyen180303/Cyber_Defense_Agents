@@ -1,0 +1,11 @@
+id: benign-normal-day
+label: benign
+description: Two CI deploys and steady production API traffic.
+start: 2026-10-08T15:00:00Z
+seed: 21
+expect: {incident: false}
+steps:
+  - {do: ci_run, run_id: 4901}
+  - {do: api_read, after: 30, count: 6, spacing: 45}
+  - {do: ci_run, after: 600, run_id: 4902}
+  - {do: api_read, after: 30, count: 3, spacing: 45}

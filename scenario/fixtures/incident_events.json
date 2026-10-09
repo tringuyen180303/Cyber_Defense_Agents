@@ -13,7 +13,7 @@
   "eventSource": "sts.amazonaws.com",
   "eventName": "AssumeRole",
   "awsRegion": "us-west-2",
-  "sourceIPAddress": "20.42.8.17",
+  "sourceIPAddress": "4.148.12.34",
   "userAgent": "aws-cli/2.15.30 Python/3.11.8 Linux/6.5.0-1016-azure exe/x86_64.ubuntu.22 exec-env/GitHub-Actions",
   "requestParameters": {
    "roleArn": "arn:aws:iam::111122223333:role/ci-deploy-role",
@@ -21,15 +21,15 @@
   },
   "responseElements": {
    "credentials": {
-    "accessKeyId": "ASIAQ35RFE2A3HYHK6ZZ",
+    "accessKeyId": "ASIAQ3BRPOIGF3CBFNOB",
     "expiration": "2026-10-07T03:25:10Z"
    },
    "assumedRoleUser": {
     "arn": "arn:aws:sts::111122223333:assumed-role/ci-deploy-role/gha-4821"
    }
   },
-  "requestID": "3d77b36f-0449-464f-d736-466b222b0436",
-  "eventID": "0e8ba9bd-74cf-633f-1ebb-649f9ff979be",
+  "requestID": "a65ed389-b74d-0fb1-32e7-06298fadc1a6",
+  "eventID": "386ecbe0-6b65-a6a4-8b81-48f6b38a088c",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": true,
@@ -43,7 +43,7 @@
    "principalId": "AROAQ3EXAMPLECIDEPL:gha-4821",
    "arn": "arn:aws:sts::111122223333:assumed-role/ci-deploy-role/gha-4821",
    "accountId": "111122223333",
-   "accessKeyId": "ASIAQ35RFE2A3HYHK6ZZ",
+   "accessKeyId": "ASIAQ3BRPOIGF3CBFNOB",
    "sessionContext": {
     "sessionIssuer": {
      "type": "Role",
@@ -62,14 +62,14 @@
   "eventSource": "secretsmanager.amazonaws.com",
   "eventName": "GetSecretValue",
   "awsRegion": "us-west-2",
-  "sourceIPAddress": "20.42.8.17",
+  "sourceIPAddress": "4.148.12.34",
   "userAgent": "aws-cli/2.15.30 Python/3.11.8 Linux/6.5.0-1016-azure exe/x86_64.ubuntu.22 exec-env/GitHub-Actions",
   "requestParameters": {
    "secretId": "ci/npm-token"
   },
   "responseElements": null,
-  "requestID": "2cdbe3ec-cdf1-6565-c1e5-9ebba2b6da97",
-  "eventID": "31d281dc-6bd8-f4a3-ec3e-9adefe882d51",
+  "requestID": "28df6ec4-ce4a-2bbd-c241-330b01a9e71f",
+  "eventID": "47229389-571a-a876-6c30-7511b2b9437a",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": true,
@@ -108,15 +108,56 @@
   "eventSource": "s3.amazonaws.com",
   "eventName": "GetObject",
   "awsRegion": "us-west-2",
-  "sourceIPAddress": "10.0.1.12",
+  "sourceIPAddress": "10.0.3.168",
   "userAgent": "aws-sdk-go-v2/1.30.3 os/linux lang/go#1.22.5 api/s3#1.58.2",
   "requestParameters": {
    "bucketName": "customer-documents",
-   "key": "invoices/2026/2330.pdf"
+   "key": "kyc/2026/5803.pdf"
   },
   "responseElements": null,
-  "requestID": "cf7d59dc-4b94-86e6-bf12-ac2cbc5c62d0",
-  "eventID": "2481b50c-a862-4894-ee31-bc55a973d8f7",
+  "requestID": "93cd59bf-5c94-1cf0-dc98-d2c1e2acf72f",
+  "eventID": "0bbb2599-11ce-5dd2-b45e-d1f03139d32c",
+  "readOnly": true,
+  "eventType": "AwsApiCall",
+  "managementEvent": false,
+  "recipientAccountId": "111122223333",
+  "eventCategory": "Data"
+ },
+ {
+  "eventVersion": "1.09",
+  "userIdentity": {
+   "type": "AssumedRole",
+   "principalId": "AROAQ3EXAMPLEPRODAP:ecs-task-7f3a",
+   "arn": "arn:aws:sts::111122223333:assumed-role/prod-api-role/ecs-task-7f3a",
+   "accountId": "111122223333",
+   "accessKeyId": "ASIAQ3PRODAPITASK001",
+   "sessionContext": {
+    "sessionIssuer": {
+     "type": "Role",
+     "principalId": "AROAQ3EXAMPLEPRODAP",
+     "arn": "arn:aws:iam::111122223333:role/prod-api-role",
+     "accountId": "111122223333",
+     "userName": "prod-api-role"
+    },
+    "attributes": {
+     "creationDate": "2026-10-07T02:06:40Z",
+     "mfaAuthenticated": "false"
+    }
+   }
+  },
+  "eventTime": "2026-10-07T02:26:40Z",
+  "eventSource": "s3.amazonaws.com",
+  "eventName": "GetObject",
+  "awsRegion": "us-west-2",
+  "sourceIPAddress": "10.0.2.30",
+  "userAgent": "aws-sdk-go-v2/1.30.3 os/linux lang/go#1.22.5 api/s3#1.58.2",
+  "requestParameters": {
+   "bucketName": "customer-documents",
+   "key": "kyc/2026/4733.pdf"
+  },
+  "responseElements": null,
+  "requestID": "19db3ad0-ddd1-dfb2-3b98-2ef8daf61a26",
+  "eventID": "a2bc372f-7412-b293-4729-4739614ff3d7",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -130,7 +171,7 @@
    "principalId": "AROAQ3EXAMPLECIDEPL:gha-4821",
    "arn": "arn:aws:sts::111122223333:assumed-role/ci-deploy-role/gha-4821",
    "accountId": "111122223333",
-   "accessKeyId": "ASIAQ35RFE2A3HYHK6ZZ",
+   "accessKeyId": "ASIAQ3BRPOIGF3CBFNOB",
    "sessionContext": {
     "sessionIssuer": {
      "type": "Role",
@@ -149,15 +190,15 @@
   "eventSource": "s3.amazonaws.com",
   "eventName": "PutObject",
   "awsRegion": "us-west-2",
-  "sourceIPAddress": "20.42.8.17",
+  "sourceIPAddress": "4.148.12.34",
   "userAgent": "aws-cli/2.15.30 Python/3.11.8 Linux/6.5.0-1016-azure exe/x86_64.ubuntu.22 exec-env/GitHub-Actions",
   "requestParameters": {
    "bucketName": "build-artifacts",
-   "key": "builds/87c73b310878.tar.gz"
+   "key": "builds/de8a774bcf36.tar.gz"
   },
   "responseElements": null,
-  "requestID": "43ba5ffa-e1e2-8d5b-e6bf-3285ac2a20f6",
-  "eventID": "5378e6f6-37e5-4364-44f2-628647d61fef",
+  "requestID": "c37459ee-f50b-ea63-371e-cd7b27cd8130",
+  "eventID": "6142ea7d-17be-3111-1a2a-73ed562b0f79",
   "readOnly": false,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -171,7 +212,7 @@
    "principalId": "AROAQ3EXAMPLECIDEPL:gha-4821",
    "arn": "arn:aws:sts::111122223333:assumed-role/ci-deploy-role/gha-4821",
    "accountId": "111122223333",
-   "accessKeyId": "ASIAQ35RFE2A3HYHK6ZZ",
+   "accessKeyId": "ASIAQ3BRPOIGF3CBFNOB",
    "sessionContext": {
     "sessionIssuer": {
      "type": "Role",
@@ -190,12 +231,12 @@
   "eventSource": "ecr.amazonaws.com",
   "eventName": "GetAuthorizationToken",
   "awsRegion": "us-west-2",
-  "sourceIPAddress": "20.42.8.17",
+  "sourceIPAddress": "4.148.12.34",
   "userAgent": "aws-cli/2.15.30 Python/3.11.8 Linux/6.5.0-1016-azure exe/x86_64.ubuntu.22 exec-env/GitHub-Actions",
   "requestParameters": null,
   "responseElements": null,
-  "requestID": "a155b585-61a9-0374-9848-e22ecd95e7a8",
-  "eventID": "40c9f77e-a455-32d8-2f12-c99ba6a55cfd",
+  "requestID": "580d7b71-d8f5-6413-5be6-128e18c26797",
+  "eventID": "0b1f9163-ce9f-f57f-43b7-a3a69a8dca03",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": true,
@@ -209,7 +250,7 @@
    "principalId": "AROAQ3EXAMPLECIDEPL:gha-4821",
    "arn": "arn:aws:sts::111122223333:assumed-role/ci-deploy-role/gha-4821",
    "accountId": "111122223333",
-   "accessKeyId": "ASIAQ35RFE2A3HYHK6ZZ",
+   "accessKeyId": "ASIAQ3BRPOIGF3CBFNOB",
    "sessionContext": {
     "sessionIssuer": {
      "type": "Role",
@@ -228,15 +269,15 @@
   "eventSource": "ecr.amazonaws.com",
   "eventName": "PutImage",
   "awsRegion": "us-west-2",
-  "sourceIPAddress": "20.42.8.17",
+  "sourceIPAddress": "4.148.12.34",
   "userAgent": "aws-cli/2.15.30 Python/3.11.8 Linux/6.5.0-1016-azure exe/x86_64.ubuntu.22 exec-env/GitHub-Actions",
   "requestParameters": {
    "repositoryName": "sentinel-api",
-   "imageTag": "87c73b310878"
+   "imageTag": "de8a774bcf36"
   },
   "responseElements": null,
-  "requestID": "ae331288-859c-97d7-ff91-e34055818a42",
-  "eventID": "e665c302-7c0b-a9d2-e002-f214d2420b53",
+  "requestID": "1ff49b78-8946-3e85-759c-de66bacfb3d0",
+  "eventID": "142c3fe8-60e7-a113-ec1b-8ca1f91e1d4c",
   "readOnly": false,
   "eventType": "AwsApiCall",
   "managementEvent": true,
@@ -260,24 +301,24 @@
      "userName": "prod-api-role"
     },
     "attributes": {
-     "creationDate": "2026-10-07T02:07:10Z",
+     "creationDate": "2026-10-07T02:07:40Z",
      "mfaAuthenticated": "false"
     }
    }
   },
-  "eventTime": "2026-10-07T02:27:10Z",
+  "eventTime": "2026-10-07T02:27:40Z",
   "eventSource": "s3.amazonaws.com",
   "eventName": "GetObject",
   "awsRegion": "us-west-2",
-  "sourceIPAddress": "10.0.3.234",
+  "sourceIPAddress": "10.0.2.100",
   "userAgent": "aws-sdk-go-v2/1.30.3 os/linux lang/go#1.22.5 api/s3#1.58.2",
   "requestParameters": {
    "bucketName": "customer-documents",
-   "key": "contracts/2026/3659.pdf"
+   "key": "contracts/2026/3664.pdf"
   },
   "responseElements": null,
-  "requestID": "98bf6a3e-6867-035e-3706-f04c5fba343c",
-  "eventID": "f0546821-170b-dd14-95e7-b61004c0d48a",
+  "requestID": "b3aa7efe-4458-a885-ab90-99a435a240ae",
+  "eventID": "12476f57-a5e5-a5ab-aefc-fad8efc89849",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -301,24 +342,24 @@
      "userName": "prod-api-role"
     },
     "attributes": {
-     "creationDate": "2026-10-07T02:07:50Z",
+     "creationDate": "2026-10-07T02:08:40Z",
      "mfaAuthenticated": "false"
     }
    }
   },
-  "eventTime": "2026-10-07T02:27:50Z",
+  "eventTime": "2026-10-07T02:28:40Z",
   "eventSource": "s3.amazonaws.com",
   "eventName": "GetObject",
   "awsRegion": "us-west-2",
-  "sourceIPAddress": "10.0.2.103",
+  "sourceIPAddress": "10.0.3.196",
   "userAgent": "aws-sdk-go-v2/1.30.3 os/linux lang/go#1.22.5 api/s3#1.58.2",
   "requestParameters": {
    "bucketName": "customer-documents",
-   "key": "invoices/2026/4650.pdf"
+   "key": "kyc/2026/3803.pdf"
   },
   "responseElements": null,
-  "requestID": "8d2349a4-2ec1-783f-024a-dee93fa72273",
-  "eventID": "738b9ebb-91e3-684c-4429-9fa1e8d333b1",
+  "requestID": "6123fdf7-7656-af72-29d4-beef3eabedcb",
+  "eventID": "a3d70628-ece6-6fa2-fd51-66e6451b4cf3",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -342,65 +383,24 @@
      "userName": "prod-api-role"
     },
     "attributes": {
-     "creationDate": "2026-10-07T02:09:20Z",
+     "creationDate": "2026-10-07T02:09:40Z",
      "mfaAuthenticated": "false"
     }
    }
   },
-  "eventTime": "2026-10-07T02:29:20Z",
+  "eventTime": "2026-10-07T02:29:40Z",
   "eventSource": "s3.amazonaws.com",
   "eventName": "GetObject",
   "awsRegion": "us-west-2",
-  "sourceIPAddress": "10.0.1.166",
+  "sourceIPAddress": "10.0.3.93",
   "userAgent": "aws-sdk-go-v2/1.30.3 os/linux lang/go#1.22.5 api/s3#1.58.2",
   "requestParameters": {
    "bucketName": "customer-documents",
-   "key": "contracts/2026/1963.pdf"
+   "key": "kyc/2026/4598.pdf"
   },
   "responseElements": null,
-  "requestID": "72e871b3-c2d3-d967-a626-83ed6070e32e",
-  "eventID": "c1143151-eb15-1b3a-21c1-85b500326863",
-  "readOnly": true,
-  "eventType": "AwsApiCall",
-  "managementEvent": false,
-  "recipientAccountId": "111122223333",
-  "eventCategory": "Data"
- },
- {
-  "eventVersion": "1.09",
-  "userIdentity": {
-   "type": "AssumedRole",
-   "principalId": "AROAQ3EXAMPLEPRODAP:ecs-task-7f3a",
-   "arn": "arn:aws:sts::111122223333:assumed-role/prod-api-role/ecs-task-7f3a",
-   "accountId": "111122223333",
-   "accessKeyId": "ASIAQ3PRODAPITASK001",
-   "sessionContext": {
-    "sessionIssuer": {
-     "type": "Role",
-     "principalId": "AROAQ3EXAMPLEPRODAP",
-     "arn": "arn:aws:iam::111122223333:role/prod-api-role",
-     "accountId": "111122223333",
-     "userName": "prod-api-role"
-    },
-    "attributes": {
-     "creationDate": "2026-10-07T02:10:30Z",
-     "mfaAuthenticated": "false"
-    }
-   }
-  },
-  "eventTime": "2026-10-07T02:30:30Z",
-  "eventSource": "s3.amazonaws.com",
-  "eventName": "GetObject",
-  "awsRegion": "us-west-2",
-  "sourceIPAddress": "10.0.2.91",
-  "userAgent": "aws-sdk-go-v2/1.30.3 os/linux lang/go#1.22.5 api/s3#1.58.2",
-  "requestParameters": {
-   "bucketName": "customer-documents",
-   "key": "contracts/2026/4969.pdf"
-  },
-  "responseElements": null,
-  "requestID": "e4329c84-c3cd-8b60-d82e-a39422098287",
-  "eventID": "5a181f58-0ac2-6396-4eef-48d8b0908f13",
+  "requestID": "0e51f30d-c6a7-ee39-c4b0-32ccd7c524a5",
+  "eventID": "ce177b4e-0837-b8a3-d261-a7ab3aa2e4f9",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -425,8 +425,8 @@
   "userAgent": "Boto3/1.34.11 md/Botocore#1.34.11 ua/2.0 os/linux#6.5.0-kali3-amd64 lang/python#3.11.8",
   "requestParameters": null,
   "responseElements": null,
-  "requestID": "c39bf1f8-b2ca-6bd2-38e9-09f05ad817ba",
-  "eventID": "c0ff8a48-8050-c038-417e-dfa06cc72e8c",
+  "requestID": "10f1bc81-448a-aa9e-66b2-bc5b50c187fc",
+  "eventID": "9132b63e-f162-87e4-e9c3-49e03602f8ac",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": true,
@@ -451,8 +451,8 @@
   "userAgent": "Boto3/1.34.11 md/Botocore#1.34.11 ua/2.0 os/linux#6.5.0-kali3-amd64 lang/python#3.11.8",
   "requestParameters": null,
   "responseElements": null,
-  "requestID": "d0add605-8864-d32c-b32d-742a1443c6c9",
-  "eventID": "c764f8c7-5e01-ea7d-ca2e-8da6708aa2f7",
+  "requestID": "366eb16f-508e-bad7-b7c9-3acfe059a0ee",
+  "eventID": "e27a984d-6548-21d0-7fcd-9eb1a7cad415",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": true,
@@ -477,8 +477,8 @@
   "userAgent": "Boto3/1.34.11 md/Botocore#1.34.11 ua/2.0 os/linux#6.5.0-kali3-amd64 lang/python#3.11.8",
   "requestParameters": null,
   "responseElements": null,
-  "requestID": "042a2952-adfe-d4e5-4744-0006f10eb0ea",
-  "eventID": "666d7739-dfab-100b-3e39-f028f88cb9b2",
+  "requestID": "24933b83-7577-50a9-a491-f0b2ea1fca65",
+  "eventID": "beb79919-3f22-faf8-23be-d01d43cf2fde",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": true,
@@ -505,8 +505,8 @@
    "userName": "ci-deployer"
   },
   "responseElements": null,
-  "requestID": "d72476da-45a0-4d54-b3a1-b80fd3bacc13",
-  "eventID": "8bfa0f35-8290-b913-e61b-c863e08ef0a0",
+  "requestID": "bf3c4c06-4343-08bc-89fa-6a688fb5d27b",
+  "eventID": "956269f0-e5d7-b875-6dad-d6c795a76d79",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": true,
@@ -534,8 +534,8 @@
    "policyName": "ci-deployer-access"
   },
   "responseElements": null,
-  "requestID": "dfd0b3e0-5a2e-e6fa-1e6d-602525994912",
-  "eventID": "ff82032f-73a7-2975-91e8-9b6db78374cb",
+  "requestID": "ff50bde4-3825-67b8-5cab-cc97663f1c97",
+  "eventID": "7e570ddf-8270-50a8-2369-b584ff5e9ff0",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": true,
@@ -563,8 +563,8 @@
    "policyName": "ci-deploy-permissions"
   },
   "responseElements": null,
-  "requestID": "5e938891-848c-9fe6-3faf-5eac7f97fe08",
-  "eventID": "666ab560-b659-4e2e-f066-e6f746c51d5a",
+  "requestID": "dc713d96-0c0f-d195-c17a-f08a1745d6d8",
+  "eventID": "28f49481-a0a0-4dc4-2720-9bdf1c11f735",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": true,
@@ -595,11 +595,11 @@
     "userName": "ci-deployer",
     "accessKeyId": "AKIAQ3EXAMPLEATTK7XZ",
     "status": "Active",
-    "createDate": "2026-10-07T02:33:17Z"
+    "createDate": "2026-10-07T02:33:17+00:00"
    }
   },
-  "requestID": "3294f6d3-ffc2-9344-26fb-2d42693ec251",
-  "eventID": "6d8a0997-3b17-172b-208e-6afff5f26a5f",
+  "requestID": "98ae4334-6c12-ace8-ae34-0454cac5b68c",
+  "eventID": "988c24c9-61b1-cd22-6280-1c4510435a10",
   "readOnly": false,
   "eventType": "AwsApiCall",
   "managementEvent": true,
@@ -624,8 +624,8 @@
   "userAgent": "Boto3/1.34.11 md/Botocore#1.34.11 ua/2.0 os/linux#6.5.0-kali3-amd64 lang/python#3.11.8",
   "requestParameters": null,
   "responseElements": null,
-  "requestID": "ce8a4293-673a-38f7-6193-ab0809d73a75",
-  "eventID": "9ffb5fa9-c684-bb61-9ab4-a69876ae0304",
+  "requestID": "405cacec-8774-09a9-77d2-1e02ff01cf99",
+  "eventID": "f143262f-dc5c-0eed-8da0-365bf89897b9",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": true,
@@ -661,8 +661,8 @@
     "arn": "arn:aws:sts::111122223333:assumed-role/ci-deploy-role/gha-debug"
    }
   },
-  "requestID": "48a0d015-6862-79e7-8768-95c2f85c24c3",
-  "eventID": "5f71ff4c-211c-ef6b-12dd-5bb795d6b0e4",
+  "requestID": "1d53434b-b881-39b9-ae27-0da702f06b90",
+  "eventID": "c0398710-8976-e334-e281-7efdae849217",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": true,
@@ -699,8 +699,8 @@
   "userAgent": "Boto3/1.34.11 md/Botocore#1.34.11 ua/2.0 os/linux#6.5.0-kali3-amd64 lang/python#3.11.8",
   "requestParameters": null,
   "responseElements": null,
-  "requestID": "d10c7983-9123-7a9d-4f77-283d94dbaa54",
-  "eventID": "daf63750-e94f-9c81-f7c1-20307c0ede33",
+  "requestID": "5715bd6f-a416-1293-c4c2-e2e3444ea7c8",
+  "eventID": "287d06ca-6f4c-c69a-4b22-d3081c8eaee9",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": true,
@@ -739,8 +739,8 @@
    "bucketName": "customer-documents"
   },
   "responseElements": null,
-  "requestID": "2c9708a2-e7b3-49bb-aaa4-cc5ae330ed6a",
-  "eventID": "f3896fad-0ced-6b07-bf9d-599222880c89",
+  "requestID": "b8db0672-f42d-47cc-00d4-af5974273ca3",
+  "eventID": "f8cda88b-436d-76e2-b83c-fe0be037e5ed",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -780,8 +780,8 @@
    "key": "contracts/2026/4401.pdf"
   },
   "responseElements": null,
-  "requestID": "86415cd2-9ad6-4879-2f9d-628b41aeb8d4",
-  "eventID": "f61437f1-2a70-ec30-2f3c-a15a630f4268",
+  "requestID": "81f76d1c-2dbc-2134-c30f-f46e8026695f",
+  "eventID": "a013ac6e-deda-4e16-1b3d-bd5ce9a1fa6f",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -810,7 +810,7 @@
     }
    }
   },
-  "eventTime": "2026-10-07T02:35:46Z",
+  "eventTime": "2026-10-07T02:35:44Z",
   "eventSource": "s3.amazonaws.com",
   "eventName": "GetObject",
   "awsRegion": "us-west-2",
@@ -821,8 +821,8 @@
    "key": "contracts/2026/4402.pdf"
   },
   "responseElements": null,
-  "requestID": "02d61d66-20f9-bfc9-9eb0-a058904d0a50",
-  "eventID": "129a98a8-65ed-7ecc-6abd-6c976242ca80",
+  "requestID": "81f631d4-a392-31a7-d777-a4774c66e0a8",
+  "eventID": "5fb8d16c-2720-797d-32eb-d6899be578c7",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -851,7 +851,7 @@
     }
    }
   },
-  "eventTime": "2026-10-07T02:35:51Z",
+  "eventTime": "2026-10-07T02:35:47Z",
   "eventSource": "s3.amazonaws.com",
   "eventName": "GetObject",
   "awsRegion": "us-west-2",
@@ -862,8 +862,8 @@
    "key": "contracts/2026/4415.pdf"
   },
   "responseElements": null,
-  "requestID": "955a2740-91b6-d376-ee71-4b0cf2d94421",
-  "eventID": "e47d85ce-306b-ba50-2d4a-ad08687e93fb",
+  "requestID": "f4188f3f-8a14-be62-295b-4715c333e861",
+  "eventID": "eb2263dd-87c5-421e-ec24-a3c5c754108f",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -892,7 +892,7 @@
     }
    }
   },
-  "eventTime": "2026-10-07T02:35:55Z",
+  "eventTime": "2026-10-07T02:35:50Z",
   "eventSource": "s3.amazonaws.com",
   "eventName": "GetObject",
   "awsRegion": "us-west-2",
@@ -903,8 +903,8 @@
    "key": "contracts/2026/4420.pdf"
   },
   "responseElements": null,
-  "requestID": "970accbb-fc3a-70ac-9c3a-d6fc6080252e",
-  "eventID": "99cf3419-f2af-0414-e3c2-8fe1e89f53ad",
+  "requestID": "7d154385-52fb-e43b-9954-6eb400257ad1",
+  "eventID": "5cec4eb5-edd9-6831-1ca3-5cfb04fc6d82",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -933,7 +933,7 @@
     }
    }
   },
-  "eventTime": "2026-10-07T02:35:58Z",
+  "eventTime": "2026-10-07T02:35:53Z",
   "eventSource": "s3.amazonaws.com",
   "eventName": "GetObject",
   "awsRegion": "us-west-2",
@@ -944,8 +944,8 @@
    "key": "contracts/2026/4433.pdf"
   },
   "responseElements": null,
-  "requestID": "9a6b7a29-bcbb-8f94-ea31-31cf96865cbe",
-  "eventID": "8c54519f-bbe8-793e-f38b-9f9eca8733db",
+  "requestID": "ce88cb2d-d4e8-0839-fc3e-058be0f3eab0",
+  "eventID": "3da9c2a9-0ed4-2f1a-3d4c-bf374eb93eff",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -974,7 +974,7 @@
     }
    }
   },
-  "eventTime": "2026-10-07T02:36:01Z",
+  "eventTime": "2026-10-07T02:35:56Z",
   "eventSource": "s3.amazonaws.com",
   "eventName": "GetObject",
   "awsRegion": "us-west-2",
@@ -985,8 +985,8 @@
    "key": "invoices/2026/9102.pdf"
   },
   "responseElements": null,
-  "requestID": "8d87513b-c062-04a2-5213-e852372046a8",
-  "eventID": "f8f837f2-dd7b-362b-7a3a-c4ccbc1c1ae9",
+  "requestID": "14296c07-f26b-4776-913e-4de2e0c53cb8",
+  "eventID": "d0e6e660-7c69-dee1-bb5e-4bcf15ed6269",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -1015,7 +1015,7 @@
     }
    }
   },
-  "eventTime": "2026-10-07T02:36:06Z",
+  "eventTime": "2026-10-07T02:35:59Z",
   "eventSource": "s3.amazonaws.com",
   "eventName": "GetObject",
   "awsRegion": "us-west-2",
@@ -1026,8 +1026,8 @@
    "key": "invoices/2026/9117.pdf"
   },
   "responseElements": null,
-  "requestID": "b5ca2226-76c8-2262-83c7-d3fb8e54912e",
-  "eventID": "2ff24e9a-9c64-edbe-7370-ca9f7ed4a540",
+  "requestID": "885f6e66-c2b6-d2c5-fa5d-310011b7e948",
+  "eventID": "a8e56e0c-20de-435d-2031-d750c40db9b4",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -1056,7 +1056,7 @@
     }
    }
   },
-  "eventTime": "2026-10-07T02:36:10Z",
+  "eventTime": "2026-10-07T02:36:02Z",
   "eventSource": "s3.amazonaws.com",
   "eventName": "GetObject",
   "awsRegion": "us-west-2",
@@ -1067,8 +1067,8 @@
    "key": "invoices/2026/9120.pdf"
   },
   "responseElements": null,
-  "requestID": "0329d92d-6f0f-5fdc-c7ee-e466ea96dda4",
-  "eventID": "413b0738-3f3f-433d-1f15-40cc4d1567e8",
+  "requestID": "2a45c2ab-8cbf-edb0-f264-accc79ac1b1e",
+  "eventID": "9b49bd26-df57-c59a-8715-a10343dac043",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -1097,7 +1097,7 @@
     }
    }
   },
-  "eventTime": "2026-10-07T02:36:13Z",
+  "eventTime": "2026-10-07T02:36:05Z",
   "eventSource": "s3.amazonaws.com",
   "eventName": "GetObject",
   "awsRegion": "us-west-2",
@@ -1108,8 +1108,8 @@
    "key": "invoices/2026/9188.pdf"
   },
   "responseElements": null,
-  "requestID": "ddef5b92-f291-2318-85f4-30f20c81cf24",
-  "eventID": "9ba67574-e52c-aa86-4060-4075ceb6f894",
+  "requestID": "edcd465e-3638-6821-f6e0-7cc06c52c49f",
+  "eventID": "b09b2a5c-badc-c32a-c159-0f538a0f4efb",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -1138,7 +1138,7 @@
     }
    }
   },
-  "eventTime": "2026-10-07T02:36:16Z",
+  "eventTime": "2026-10-07T02:36:08Z",
   "eventSource": "s3.amazonaws.com",
   "eventName": "GetObject",
   "awsRegion": "us-west-2",
@@ -1149,8 +1149,8 @@
    "key": "invoices/2026/9191.pdf"
   },
   "responseElements": null,
-  "requestID": "9a663d0a-333c-82bf-53ce-8fb6187c3bb0",
-  "eventID": "f9de4c5b-3089-95e3-befc-31958723280b",
+  "requestID": "66245bfa-4fcc-a39a-b683-d2e6337ea2df",
+  "eventID": "5f987c71-a65e-688e-abf3-ad39fec21bbe",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -1179,7 +1179,7 @@
     }
    }
   },
-  "eventTime": "2026-10-07T02:36:18Z",
+  "eventTime": "2026-10-07T02:36:11Z",
   "eventSource": "s3.amazonaws.com",
   "eventName": "GetObject",
   "awsRegion": "us-west-2",
@@ -1190,8 +1190,90 @@
    "key": "kyc/2026/771.pdf"
   },
   "responseElements": null,
-  "requestID": "6707065f-2045-1f7e-fdb4-efd7279e3687",
-  "eventID": "e5950021-0121-9aeb-0782-3bfb02851b01",
+  "requestID": "7394988f-847f-d9b4-e64d-1bcb702753a1",
+  "eventID": "1064005c-3985-c3cf-3f76-be1d1efa2197",
+  "readOnly": true,
+  "eventType": "AwsApiCall",
+  "managementEvent": false,
+  "recipientAccountId": "111122223333",
+  "eventCategory": "Data"
+ },
+ {
+  "eventVersion": "1.09",
+  "userIdentity": {
+   "type": "AssumedRole",
+   "principalId": "AROAQ3EXAMPLECIDEPL:gha-debug",
+   "arn": "arn:aws:sts::111122223333:assumed-role/ci-deploy-role/gha-debug",
+   "accountId": "111122223333",
+   "accessKeyId": "ASIAQ3EXAMPLESESS9FQ",
+   "sessionContext": {
+    "sessionIssuer": {
+     "type": "Role",
+     "principalId": "AROAQ3EXAMPLECIDEPL",
+     "arn": "arn:aws:iam::111122223333:role/ci-deploy-role",
+     "accountId": "111122223333",
+     "userName": "ci-deploy-role"
+    },
+    "attributes": {
+     "creationDate": "2026-10-07T02:34:02Z",
+     "mfaAuthenticated": "false"
+    }
+   }
+  },
+  "eventTime": "2026-10-07T02:36:14Z",
+  "eventSource": "s3.amazonaws.com",
+  "eventName": "GetObject",
+  "awsRegion": "us-west-2",
+  "sourceIPAddress": "45.137.21.9",
+  "userAgent": "Boto3/1.34.11 md/Botocore#1.34.11 ua/2.0 os/linux#6.5.0-kali3-amd64 lang/python#3.11.8",
+  "requestParameters": {
+   "bucketName": "customer-documents",
+   "key": "kyc/2026/772.pdf"
+  },
+  "responseElements": null,
+  "requestID": "8dcdcd03-969b-6662-0562-8059568cc69b",
+  "eventID": "01d74256-3860-2ab6-96a4-02f23ae8cc93",
+  "readOnly": true,
+  "eventType": "AwsApiCall",
+  "managementEvent": false,
+  "recipientAccountId": "111122223333",
+  "eventCategory": "Data"
+ },
+ {
+  "eventVersion": "1.09",
+  "userIdentity": {
+   "type": "AssumedRole",
+   "principalId": "AROAQ3EXAMPLECIDEPL:gha-debug",
+   "arn": "arn:aws:sts::111122223333:assumed-role/ci-deploy-role/gha-debug",
+   "accountId": "111122223333",
+   "accessKeyId": "ASIAQ3EXAMPLESESS9FQ",
+   "sessionContext": {
+    "sessionIssuer": {
+     "type": "Role",
+     "principalId": "AROAQ3EXAMPLECIDEPL",
+     "arn": "arn:aws:iam::111122223333:role/ci-deploy-role",
+     "accountId": "111122223333",
+     "userName": "ci-deploy-role"
+    },
+    "attributes": {
+     "creationDate": "2026-10-07T02:34:02Z",
+     "mfaAuthenticated": "false"
+    }
+   }
+  },
+  "eventTime": "2026-10-07T02:36:17Z",
+  "eventSource": "s3.amazonaws.com",
+  "eventName": "GetObject",
+  "awsRegion": "us-west-2",
+  "sourceIPAddress": "45.137.21.9",
+  "userAgent": "Boto3/1.34.11 md/Botocore#1.34.11 ua/2.0 os/linux#6.5.0-kali3-amd64 lang/python#3.11.8",
+  "requestParameters": {
+   "bucketName": "customer-documents",
+   "key": "kyc/2026/790.pdf"
+  },
+  "responseElements": null,
+  "requestID": "0f1259e0-a18f-f6b6-b535-106e122c9a56",
+  "eventID": "080aadfb-e7c9-9b26-1141-25c63a9bedd4",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -1228,93 +1310,11 @@
   "userAgent": "Boto3/1.34.11 md/Botocore#1.34.11 ua/2.0 os/linux#6.5.0-kali3-amd64 lang/python#3.11.8",
   "requestParameters": {
    "bucketName": "customer-documents",
-   "key": "kyc/2026/772.pdf"
-  },
-  "responseElements": null,
-  "requestID": "a701d096-0cb7-321f-4c28-5c294a22c21e",
-  "eventID": "7766ab44-b2ca-0644-a881-644cfa9873b9",
-  "readOnly": true,
-  "eventType": "AwsApiCall",
-  "managementEvent": false,
-  "recipientAccountId": "111122223333",
-  "eventCategory": "Data"
- },
- {
-  "eventVersion": "1.09",
-  "userIdentity": {
-   "type": "AssumedRole",
-   "principalId": "AROAQ3EXAMPLECIDEPL:gha-debug",
-   "arn": "arn:aws:sts::111122223333:assumed-role/ci-deploy-role/gha-debug",
-   "accountId": "111122223333",
-   "accessKeyId": "ASIAQ3EXAMPLESESS9FQ",
-   "sessionContext": {
-    "sessionIssuer": {
-     "type": "Role",
-     "principalId": "AROAQ3EXAMPLECIDEPL",
-     "arn": "arn:aws:iam::111122223333:role/ci-deploy-role",
-     "accountId": "111122223333",
-     "userName": "ci-deploy-role"
-    },
-    "attributes": {
-     "creationDate": "2026-10-07T02:34:02Z",
-     "mfaAuthenticated": "false"
-    }
-   }
-  },
-  "eventTime": "2026-10-07T02:36:25Z",
-  "eventSource": "s3.amazonaws.com",
-  "eventName": "GetObject",
-  "awsRegion": "us-west-2",
-  "sourceIPAddress": "45.137.21.9",
-  "userAgent": "Boto3/1.34.11 md/Botocore#1.34.11 ua/2.0 os/linux#6.5.0-kali3-amd64 lang/python#3.11.8",
-  "requestParameters": {
-   "bucketName": "customer-documents",
-   "key": "kyc/2026/790.pdf"
-  },
-  "responseElements": null,
-  "requestID": "b970c05d-9def-c281-d70f-34bb25944c4e",
-  "eventID": "f4e2b0db-113d-1d29-f1a3-1b44bf3aee2d",
-  "readOnly": true,
-  "eventType": "AwsApiCall",
-  "managementEvent": false,
-  "recipientAccountId": "111122223333",
-  "eventCategory": "Data"
- },
- {
-  "eventVersion": "1.09",
-  "userIdentity": {
-   "type": "AssumedRole",
-   "principalId": "AROAQ3EXAMPLECIDEPL:gha-debug",
-   "arn": "arn:aws:sts::111122223333:assumed-role/ci-deploy-role/gha-debug",
-   "accountId": "111122223333",
-   "accessKeyId": "ASIAQ3EXAMPLESESS9FQ",
-   "sessionContext": {
-    "sessionIssuer": {
-     "type": "Role",
-     "principalId": "AROAQ3EXAMPLECIDEPL",
-     "arn": "arn:aws:iam::111122223333:role/ci-deploy-role",
-     "accountId": "111122223333",
-     "userName": "ci-deploy-role"
-    },
-    "attributes": {
-     "creationDate": "2026-10-07T02:34:02Z",
-     "mfaAuthenticated": "false"
-    }
-   }
-  },
-  "eventTime": "2026-10-07T02:36:29Z",
-  "eventSource": "s3.amazonaws.com",
-  "eventName": "GetObject",
-  "awsRegion": "us-west-2",
-  "sourceIPAddress": "45.137.21.9",
-  "userAgent": "Boto3/1.34.11 md/Botocore#1.34.11 ua/2.0 os/linux#6.5.0-kali3-amd64 lang/python#3.11.8",
-  "requestParameters": {
-   "bucketName": "customer-documents",
    "key": "kyc/2026/805.pdf"
   },
   "responseElements": null,
-  "requestID": "3a1174d3-a94d-3fca-a6ed-9e0cbdbeb570",
-  "eventID": "48c43b53-dee7-30eb-08a4-36d9da581e29",
+  "requestID": "839fbc50-1223-b513-5496-f63cdc1110c1",
+  "eventID": "7c441fe7-ab42-20a7-474a-493b3ceddf2d",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -1353,8 +1353,8 @@
    "bucketName": "model-artifacts"
   },
   "responseElements": null,
-  "requestID": "044550e7-1e42-ee2d-4cee-d03837bcf79a",
-  "eventID": "932d6b2f-cfc0-426b-843e-fe2f34418d4c",
+  "requestID": "b92da22b-21df-306f-8a0b-3c3336d8393a",
+  "eventID": "93829b43-922f-e15a-e1e3-db63ef7ddc76",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,
@@ -1393,8 +1393,8 @@
    "secretId": "ci/npm-token"
   },
   "responseElements": null,
-  "requestID": "e6b0aca0-26fd-8253-5247-15af7ee6990b",
-  "eventID": "7856fcb3-8b27-036b-d7f7-4004a2b491ff",
+  "requestID": "7914c120-c8dc-d19f-3e35-11287900f7f9",
+  "eventID": "1825bc54-30be-b45f-6835-14f2ceb81f9d",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": true,
@@ -1439,8 +1439,8 @@
    "secretId": "prod/db-password"
   },
   "responseElements": null,
-  "requestID": "9ce6dabe-9768-65b1-087d-f61d21e4a7e7",
-  "eventID": "53c50458-a4f9-315f-6f4d-a8c98a47055f",
+  "requestID": "5ab33edf-6e59-5ed3-a8b3-17fa18d0752b",
+  "eventID": "dd2467ac-778e-edb3-693d-ffbc6c6fa611",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": true,
@@ -1481,15 +1481,15 @@
   "eventSource": "s3.amazonaws.com",
   "eventName": "GetObject",
   "awsRegion": "us-west-2",
-  "sourceIPAddress": "10.0.2.50",
+  "sourceIPAddress": "10.0.3.177",
   "userAgent": "aws-sdk-go-v2/1.30.3 os/linux lang/go#1.22.5 api/s3#1.58.2",
   "requestParameters": {
    "bucketName": "customer-documents",
-   "key": "kyc/2026/7287.pdf"
+   "key": "kyc/2026/1887.pdf"
   },
   "responseElements": null,
-  "requestID": "f09826ce-aac8-fca9-c931-065abe063f44",
-  "eventID": "e89966a5-4bfe-753b-22ab-b140b281e8e6",
+  "requestID": "0f844fef-1931-e9ee-a56c-0941fbf24050",
+  "eventID": "ccf3a171-56dc-8907-ba6c-34ab6712303a",
   "readOnly": true,
   "eventType": "AwsApiCall",
   "managementEvent": false,

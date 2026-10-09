@@ -31,6 +31,7 @@ class Profile:
     user_agents: Counter = field(default_factory=Counter)
     actions: Counter = field(default_factory=Counter)
     resources: Counter = field(default_factory=Counter)
+    hours: Counter = field(default_factory=Counter)
     first_seen: datetime | None = None
     last_seen: datetime | None = None
 
@@ -44,6 +45,7 @@ class Profile:
             "user_agents": dict(self.user_agents.most_common(5)),
             "actions": dict(self.actions.most_common(20)),
             "resources": dict(self.resources.most_common(20)),
+            "active_hours_utc": sorted(self.hours),
         }
 
 
@@ -87,6 +89,7 @@ class MemoryStore:
                 p.user_agents[e.user_agent] += 1
                 p.actions[e.iam_action] += 1
                 p.resources[resource_family(e.resource)] += 1
+                p.hours[e.time.hour] += 1
                 p.first_seen = min(p.first_seen or e.time, e.time)
                 p.last_seen = max(p.last_seen or e.time, e.time)
 
@@ -135,7 +138,8 @@ class ClickHouseStore:
         return Profile(identity=identity, total=row[0], first_seen=row[1], last_seen=row[2],
                        ips=self._counter("ip", identity), user_agents=self._counter("user_agent", identity, 5),
                        actions=self._counter("iam_action", identity),
-                       resources=self._counter("resource_family", identity))
+                       resources=self._counter("resource_family", identity),
+                       hours=self._counter("toHour(time)", identity, 24))
 
     def observed_permissions(self, principal: str) -> Counter:
         q = (f"SELECT iam_action, resource, count() FROM {self.TABLE} WHERE principal = %(w)s AND error = '' "

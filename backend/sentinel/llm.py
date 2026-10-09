@@ -12,9 +12,9 @@ log = logging.getLogger(__name__)
 
 
 class LLM:
-    def __init__(self) -> None:
+    def __init__(self, disabled: bool = False) -> None:
         self.client = None
-        if config.OPENAI_API_KEY:
+        if config.OPENAI_API_KEY and not disabled:
             from openai import OpenAI
 
             self.client = OpenAI(api_key=config.OPENAI_API_KEY)

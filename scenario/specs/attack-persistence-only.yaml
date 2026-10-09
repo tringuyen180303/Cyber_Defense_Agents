@@ -1,0 +1,12 @@
+id: attack-persistence-only
+label: attack
+description: Attacker plants a backup access key and goes dormant.
+start: 2026-10-08T19:05:00Z
+seed: 12
+attacker: {ip: 103.88.12.4, ua: kali}
+expect: {incident: true}
+steps:
+  - {do: ci_run, run_id: 4890}
+  - {api: sts:GetCallerIdentity, after: 300}
+  - {api: iam:CreateAccessKey, after: 25}
+  - {do: api_read, after: 40, count: 2, spacing: 30}

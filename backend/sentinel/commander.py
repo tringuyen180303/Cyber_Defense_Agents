@@ -3,14 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import time
 
-from . import config
 from .agents import Investigator, Planner, Verifier, blast_radius, execute, finalize_blast_radius, postmortem, \
-    reconstruct
+    reconstruct, remember_incident
 from .cloudtrail import Normalizer, parse_time
-from .detectors import OPEN_THRESHOLD
 from .models import Incident, StreamEvent
 from .run import Run
 
@@ -38,8 +35,9 @@ def _sync_prod_state(run: Run, e) -> None:
 
 
 async def replay(run: Run) -> None:
-    records = json.loads((config.FIXTURES / "incident_events.json").read_text())
+    records = run.records
     norm = Normalizer()
+    k = run.knowledge
     run.state.phase = "replaying"
     run.state.total_events = len(records)
     run.set_clock(parse_time(records[0]["eventTime"]))
@@ -63,34 +61,39 @@ async def replay(run: Run) -> None:
         who = e.origin_user or e.principal
         score = run.engine.score(who)
         inc = run.state.incident
-        if signals and inc is None and score >= OPEN_THRESHOLD and \
-                len({s.detector for s in run.engine.ids[who].signals}) >= 2:
+        if signals and inc is None and score >= k.d["open_threshold"] and \
+                len({s.detector for s in run.engine.ids[who].signals}) >= k.d.get("min_detectors", 2):
             run.wall_opened = time.monotonic()
+            run.opened_at_event = len(run.events)
             with run.lock:
                 run.state.incident = Incident(
-                    id="INC-0042", title="Possible credential compromise", severity="SEV-2",
+                    id=run.incident_id, title="Possible credential compromise", severity="SEV-2",
                     status="investigating", principal=who, opened_at=e.time, confidence=score)
-            run.log(CMD, "decision", f"Incident INC-0042 opened for {who} (detection confidence {score:.0%})")
+            run.log(CMD, "decision", f"Incident {run.incident_id} opened for {who} (detection confidence {score:.0%})")
         if run.state.incident and run.state.incident.principal == who:
             inc = run.state.incident
             with run.lock:
                 inc.signals = list(run.engine.ids[who].signals)
                 inc.confidence = score
-                if score >= 0.85 and inc.severity != "SEV-1":
+                if score >= k.d.get("sev1_threshold", 0.85) and inc.severity != "SEV-1":
                     inc.severity = "SEV-1"
                     run.log(CMD, "decision", f"Escalated to SEV-1 (confidence {score:.0%})")
         run.changed()
-        await asyncio.sleep(config.REPLAY_DELAY)
+        if run.replay_delay:
+            await asyncio.sleep(run.replay_delay)
     if run.state.incident:
         atk = run.attacker_events()
         with run.lock:
             run.state.incident.attacker_ips = sorted({e.ip for e in atk})
-            run.state.incident.attacker_keys = sorted({e.access_key for e in atk})
+            minted = {k for k, ev in run.engine.minted_keys.items() if ev in atk}
+            run.state.incident.attacker_keys = sorted({e.access_key for e in atk} |
+                                                      {e.origin_key for e in atk if e.origin_key} | minted)
         run.set_clock(run.events[-1].time)
 
 
-async def pace() -> None:
-    await asyncio.sleep(config.AGENT_PACE)
+async def pace(run: Run) -> None:
+    if run.agent_pace:
+        await asyncio.sleep(run.agent_pace)
 
 
 async def run_incident(run: Run) -> None:
@@ -122,16 +125,16 @@ async def _run(run: Run) -> None:
         inc.title = top.title
         inc.status = "containing"
     run.log(CMD, "decision", f"Root cause accepted: {top.title} ({top.confidence:.0%}). Handing off to planning")
-    await pace()
+    await pace(run)
 
     planner, verifier = Planner(run), Verifier(run)
     run.state.phase = "verifying"
     actions = await asyncio.to_thread(planner.plan)
-    await pace()
+    await pace(run)
     for attempt in range(1, MAX_ATTEMPTS + 1):
         run.log(CMD, "handoff", f"Plan v{attempt} → Verifier (sandbox)")
         ok, failures, culprits = await asyncio.to_thread(verifier.sandbox, actions, attempt)
-        await pace()
+        await pace(run)
         if ok:
             break
         if attempt == MAX_ATTEMPTS:
@@ -139,7 +142,7 @@ async def _run(run: Run) -> None:
             run.log(CMD, "error", "Could not find a plan that passes verification; paging a human")
             return
         actions = await asyncio.to_thread(planner.revise, actions, failures, culprits, attempt + 1)
-        await pace()
+        await pace(run)
 
     for a in actions:
         if a.status == "sandbox_pass":
@@ -149,14 +152,14 @@ async def _run(run: Run) -> None:
     run.log(CMD, "decision", f"Auto-executing {len(safe)} SAFE action(s); "
                              f"{sum(a.status == 'awaiting_approval' for a in actions)} REVIEW action(s) need approval")
     await asyncio.to_thread(execute, run, actions, verifier)
-    await pace()
+    await pace(run)
 
     if any(a.status == "awaiting_approval" for a in actions):
-        if config.AUTO_APPROVE:
+        if run.auto_approve:
             for a in actions:
                 if a.status == "awaiting_approval":
                     a.status = "approved"
-            run.log(CMD, "decision", "Auto-approved REVIEW actions (SENTINEL_AUTO_APPROVE=1)")
+            run.log(CMD, "decision", "Auto-approved REVIEW actions (auto-approve mode)")
         else:
             run.state.phase = "awaiting_approval"
             run.log(CMD, "handoff", "Waiting for human approval of REVIEW actions (sandbox-verified)")
@@ -172,6 +175,8 @@ async def _run(run: Run) -> None:
         inc.status = "resolved" if ok else "contained (verification failures)"
         inc.resolved_at = run.now()
     await asyncio.to_thread(postmortem, run)
+    if run.persist:
+        remember_incident(run)
     run.state.phase = "resolved"
     run.log(CMD, "result", f"Incident {inc.id} {inc.status}")
 

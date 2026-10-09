@@ -1,0 +1,35 @@
+id: attack-ci-key-classic
+label: attack
+description: Leaked CI key used from a VPS — IAM discovery, persistence key, role assumption, bulk reads of customer data.
+start: 2026-10-07T02:25:00Z
+seed: 42
+attacker: {ip: 45.137.21.9, ua: kali}
+expect: {incident: true}
+steps:
+  - {do: ci_run, at: "02:25:10", run_id: 4821}
+  - {do: api_read, at: "02:25:40", count: 5, spacing: 60}
+  - {api: sts:GetCallerIdentity, at: "02:31:04"}
+  - {api: iam:ListUsers, at: "02:31:48"}
+  - {api: iam:ListRoles, at: "02:32:10"}
+  - {api: iam:ListAttachedUserPolicies, at: "02:32:29", userName: ci-deployer}
+  - {api: iam:GetUserPolicy, at: "02:32:41", userName: ci-deployer, policyName: ci-deployer-access}
+  - {api: iam:GetRolePolicy, at: "02:32:55", roleName: ci-deploy-role, policyName: ci-deploy-permissions}
+  - {api: iam:CreateAccessKey, at: "02:33:17", key_id: AKIAQ3EXAMPLEATTK7XZ}
+  - {api: sts:GetCallerIdentity, as: minted, at: "02:33:52"}
+  - {api: sts:AssumeRole, as: minted, at: "02:34:02", role: ci-deploy-role, session_name: gha-debug, session_key: ASIAQ3EXAMPLESESS9FQ}
+  - {api: s3:ListBuckets, as: session, at: "02:34:20"}
+  - {api: s3:ListObjects, as: session, at: "02:34:41", bucket: customer-documents}
+  - api: s3:GetObject
+    as: session
+    at: "02:35:41"
+    bucket: customer-documents
+    count: 14
+    spacing: 3
+    keys: [contracts/2026/4401.pdf, contracts/2026/4402.pdf, contracts/2026/4415.pdf, contracts/2026/4420.pdf,
+           contracts/2026/4433.pdf, invoices/2026/9102.pdf, invoices/2026/9117.pdf, invoices/2026/9120.pdf,
+           invoices/2026/9188.pdf, invoices/2026/9191.pdf, kyc/2026/771.pdf, kyc/2026/772.pdf, kyc/2026/790.pdf,
+           kyc/2026/805.pdf]
+  - {api: s3:ListObjects, as: session, at: "02:36:44", bucket: model-artifacts}
+  - {api: secretsmanager:GetSecretValue, as: session, at: "02:37:02", secret: ci/npm-token}
+  - {api: secretsmanager:GetSecretValue, as: session, at: "02:37:15", secret: prod/db-password, error: AccessDenied}
+  - {do: api_read, at: "02:37:40"}

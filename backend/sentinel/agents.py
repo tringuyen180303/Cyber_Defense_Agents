@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from . import config
+from . import knowledge as kb
 from .actions import CATALOG, Executor, risk_for, target_for, title_for, validate
 from .cloudtrail import parse_time, short_resource
 from .detectors import network, ua_family
@@ -135,6 +136,20 @@ class Investigator:
                          "parameters": {"type": "object", "properties": {}}},
     }
 
+    def _recall(self) -> Claim | None:
+        inc = self.run.incident
+        matches = [m for m in kb.similar_incidents({s.detector for s in inc.signals}, inc.principal) if m[0] >= 0.5]
+        if not matches:
+            return None
+        sim, m = matches[0]
+        eid = self.run.add_evidence(
+            "memory", f"Past incident {m['incident_id']} ({m['date'][:10]}, similarity {sim:.0%}): {m['root_cause']}; "
+                      f"resolved with {', '.join(m['final_actions'][:4])}", m)
+        self.run.log(self.NAME, "tool", f"recall_similar_incidents() → {m['incident_id']} ({sim:.0%} similar)",
+                     {"evidence_id": eid})
+        return Claim(text=f"Matches the pattern of past incident {m['incident_id']} ({sim:.0%} similar), root cause: "
+                          f"{m['root_cause']}", evidence_ids=[eid])
+
     def _tools(self):
         return {n: (spec, getattr(self, n)) for n, spec in self.TOOL_SPECS.items()}
 
@@ -181,17 +196,18 @@ class Investigator:
         def f(label, w, ids, cond=True):
             return {"label": label, "weight": w, "evidence_ids": ids} if cond else None
 
-        comp = [
-            f("Never-seen source network", 0.6, fired.get("new_source_network", []), "new_source_network" in fired),
-            f("Unfamiliar client / user agent", 0.4, fired.get("new_user_agent", []), "new_user_agent" in fired),
-            f("New long-lived access key minted", 0.6, fired.get("access_key_created", []),
-              "access_key_created" in fired),
-            f("Minted key used within minutes", 0.4, fired.get("fresh_key_usage", []), "fresh_key_usage" in fired),
-            f("Rapid IAM enumeration", 0.4, fired.get("rapid_iam_enumeration", []), "rapid_iam_enumeration" in fired),
-            f("Critical data accessed", 0.5, fired.get("sensitive_resource_access", []),
-              "sensitive_resource_access" in fired),
-            f("Denied access to critical asset", 0.2, fired.get("access_denied_sensitive", []),
-              "access_denied_sensitive" in fired),
+        labels = {
+            "new_source_network": ("Never-seen source network", 0.6),
+            "new_user_agent": ("Unfamiliar client / user agent", 0.4),
+            "access_key_created": ("New long-lived access key minted", 0.6),
+            "fresh_key_usage": ("Minted key used within minutes", 0.4),
+            "rapid_iam_enumeration": ("Rapid IAM enumeration", 0.4),
+            "sensitive_resource_access": ("Critical data accessed", 0.5),
+            "access_denied_sensitive": ("Denied access to critical asset", 0.2),
+            "first_time_resource_access": ("First-time access to a resource", 0.3),
+        }
+        comp = [f(*labels.get(d, (f"Learned detector: {d}", 0.4)), ids) for d, ids in fired.items()]
+        comp += [
             f("No deployment covers the activity", 0.4, [self.facts.get("deployments_eid")] if
               self.facts.get("deployments_eid") else [], not deploy_overlap),
             f("Credential leak vector found in CI code", 0.6, [x["evidence_id"] for x in leaks], bool(leaks)),
@@ -232,9 +248,17 @@ class Investigator:
         deploy_eid = self.facts.get("deployments_eid")
         leak_ids = [x["evidence_id"] for x in self.facts.get("leaks", [])]
 
-        sup = [Claim(text=f"Leaked CI key {first.access_key} used from never-seen network {network(first.ip)} "
-                          f"({intel.get('org') or 'unknown org'}) with client '{ua_family(first.user_agent)}'",
+        fired = {s.detector for s in inc.signals}
+        where = "never-seen network" if "new_source_network" in fired else "a network seen in its baseline"
+        sup = [Claim(text=f"CI credential {first.origin_key or first.access_key} used from {where} "
+                          f"{network(first.ip)} ({intel.get('org') or 'unknown org'}) with client "
+                          f"'{ua_family(first.user_agent)}'",
                      evidence_ids=[first.evidence_id, intel.get("evidence_id"), base.get("evidence_id")])]
+        for s in inc.signals:
+            if s.detector not in {"new_source_network", "new_user_agent", "rapid_iam_enumeration",
+                                  "access_key_created", "fresh_key_usage", "sensitive_resource_access",
+                                  "access_denied_sensitive", "first_time_resource_access"}:
+                sup.append(Claim(text=f"Learned detector {s.detector}: {s.title}", evidence_ids=s.evidence_ids))
         if enum:
             sup.append(Claim(text=f"{len(enum)} IAM discovery calls (users, roles, own policies) — {inc.principal} "
                                   f"made zero IAM read calls in 30 days", evidence_ids=enum[:6] + [base.get("evidence_id")]))
@@ -315,8 +339,11 @@ class Investigator:
             except Exception as exc:  # noqa: BLE001
                 run.log(self.NAME, "error", f"LLM investigation failed ({exc}); using deterministic reasoning")
         self._gather_required()
+        memory_claim = self._recall()
         scores = self._score()
         offline = self._offline_claims()
+        if memory_claim:
+            offline["credential_compromise"]["supporting"].append(memory_claim)
         hyps = []
         llm_by_id = {h.get("id"): h for h in (llm_out or {}).get("hypotheses", [])}
         if llm_by_id:
@@ -445,9 +472,35 @@ class Planner:
         self.run = run
         self.n = 0
 
-    def _make(self, kind: str, params: dict[str, Any], rationale: str, evidence_ids: list[str],
-              attempt: int) -> Action | None:
+    def conditions(self, params: dict[str, Any]) -> set[str]:
         run = self.run
+        c = set()
+        if params.get("key_id") and params["key_id"] == run.prod.ci_credential["key_id"]:
+            c.add("key_in_use_by_ci")
+        minted = {k for k, ev in run.engine.minted_keys.items() if run.engine.is_attacker_event(
+            run.incident.principal, ev)}
+        if params.get("key_id") in minted:
+            c.add("key_minted_during_incident")
+        return c
+
+    def _playbook(self, kind: str, params: dict[str, Any], rationale: str) -> tuple[str | None, str]:
+        for pb in self.run.knowledge.playbooks:
+            w = pb.get("when", {})
+            if w.get("kind") == kind and set(w.get("conditions", [])) <= self.conditions(params):
+                new_kind = pb["then"]["kind"]
+                self.run.log(self.NAME, "decision", f"Applied learned playbook {pb['id']} (from "
+                                                    f"{pb.get('learned_from', '?')}): {kind} → {new_kind}")
+                return (None if new_kind == "skip" else new_kind), \
+                    f"Playbook {pb['id']}: {pb.get('reason', '')} (learned from {pb.get('learned_from', '?')})"
+        return kind, rationale
+
+    def _make(self, kind: str, params: dict[str, Any], rationale: str, evidence_ids: list[str],
+              attempt: int, use_playbooks: bool = True) -> Action | None:
+        run = self.run
+        if use_playbooks:
+            kind, rationale = self._playbook(kind, params, rationale)
+            if kind is None:
+                return None
         try:
             validate(kind, params, run.prod)
         except ValueError as exc:
@@ -525,7 +578,8 @@ class Planner:
                   "Start with snapshot_evidence. Cite evidence_ids from evidence_index only. Risk tiers are assigned "
                   "by policy, not by you. JSON: {\"actions\": [{\"kind\": str, \"params\": {...}, \"rationale\": "
                   "str, \"evidence_ids\": [str]}]}")
-        payload = {"catalog": catalog, "incident": self._context()}
+        payload = {"catalog": catalog, "incident": self._context(),
+                   "lessons_from_past_incidents": self.run.knowledge.playbooks}
         if failures:
             payload["previous_plan"] = [{"kind": a.kind, "params": {k: v for k, v in a.params.items()
                                                                     if k != "new_policy"}} for a in current]
@@ -562,7 +616,7 @@ class Planner:
                     rep = self._make("rotate_access_key", dict(a.params),
                                      f"{a.id} broke production CI (key still in use). Rotate instead: issue a new key, "
                                      f"update the GitHub secret, then deactivate the leaked key", a.evidence_ids,
-                                     attempt)
+                                     attempt, use_playbooks=False)
                     new.append(rep)
                     run.log(self.NAME, "decision", f"Replace {a.id} (deactivate) with {rep.id} (rotate + update CI "
                                                    f"secret)")
@@ -570,6 +624,13 @@ class Planner:
                     run.log(self.NAME, "decision", f"Drop {a.id}: breaks legitimate workload")
                 else:
                     new.append(a.model_copy(update={"attempt": attempt, "status": "proposed"}))
+        for c in culprits:
+            rep = next((n for n in new if n.target == c.target and n.kind != c.kind), None)
+            run.repairs.append({
+                "culprit_kind": c.kind, "conditions": sorted(self.conditions(c.params)),
+                "replacement_kind": rep.kind if rep else "skip",
+                "failed_checks": [f["name"] for f in failures], "incident": run.incident.id,
+                "scenario": run.scenario_id})
         for a in current:
             if not any(n.id == a.id for n in new):
                 a.status, a.status_reason = "superseded", f"replaced in plan v{attempt}"
@@ -772,6 +833,23 @@ def postmortem(run: Run) -> None:
         run.run_dir.mkdir(parents=True, exist_ok=True)
         (run.run_dir / "postmortem.md").write_text(report)
     run.log(name, "result", f"Report written ({len(report.splitlines())} lines)")
+
+
+def remember_incident(run: Run) -> None:
+    inc = run.incident
+    kb.remember({
+        "incident_id": inc.id, "run_id": run.state.run_id, "date": inc.opened_at.isoformat(),
+        "scenario": run.scenario_id, "knowledge_version": run.knowledge.version, "principal": inc.principal,
+        "detectors": sorted({s.detector for s in inc.signals}),
+        "root_cause": inc.hypotheses[0].title if inc.hypotheses else "",
+        "plan_attempts": max((a.attempt for a in inc.actions), default=1),
+        "repairs": run.repairs,
+        "final_actions": [a.kind for a in inc.actions if a.status == "executed"],
+        "paths_before": len(inc.blast_radius.paths_before) if inc.blast_radius else None,
+        "paths_after": len(inc.blast_radius.paths_after or []) if inc.blast_radius else None,
+        "status": inc.status,
+    })
+    run.log("Postmortem", "result", "Incident stored in episodic memory for future investigations")
 
 
 def inc_semgrep(run: Run) -> list[dict]:

@@ -1,7 +1,7 @@
-"""Deterministic detectors. Each fires at most once per subject and cites the events that triggered it.
+"""Rule-driven detection. Every event gets a set of deterministic features; detectors (from the knowledge
+store) are feature combinations that fire at most once per subject and cite the events that triggered them.
 
-Confidence is a noisy-OR over distinct detectors that fired for an identity, so it is explainable:
-1 - prod(1 - weight_i).
+Confidence is a noisy-OR over distinct detectors that fired for an identity: 1 - prod(1 - weight_i).
 """
 
 from __future__ import annotations
@@ -10,26 +10,15 @@ import ipaddress
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import timedelta
+from typing import Any
 
 from .cloudtrail import short_resource
 from .iam import IamState
+from .knowledge import Knowledge
 from .models import Event, Signal
 from .store import BaselineStore, resource_family
 
 DATA_ACTIONS = {"s3:GetObject", "s3:ListBucket", "secretsmanager:GetSecretValue"}
-
-WEIGHTS = {
-    "new_source_network": (0.30, 6),
-    "new_user_agent": (0.20, 4),
-    "rapid_iam_enumeration": (0.35, 7),
-    "access_key_created": (0.40, 8),
-    "fresh_key_usage": (0.30, 7),
-    "first_time_resource_access": (0.25, 6),
-    "sensitive_resource_access": (0.35, 8),
-    "access_denied_sensitive": (0.20, 6),
-}
-
-OPEN_THRESHOLD = 0.6
 
 
 def network(ip: str) -> str:
@@ -45,38 +34,101 @@ def ua_family(ua: str) -> str:
     return f"{head} {os_hint.split('#')[0]}".strip()
 
 
+class _Fmt(dict):
+    def __missing__(self, k: str) -> str:
+        return "{" + k + "}"
+
+
 @dataclass
 class IdentityState:
     signals: list[Signal] = field(default_factory=list)
     fired: set[tuple] = field(default_factory=set)
-    iam_reads: list[Event] = field(default_factory=list)
-    denials: list[Event] = field(default_factory=list)
+    bursts: dict[str, list[Event]] = field(default_factory=lambda: defaultdict(list))
 
-    @property
-    def score(self) -> float:
+    def score(self, k: Knowledge) -> float:
         p = 1.0
         for d in {s.detector for s in self.signals}:
-            p *= 1 - WEIGHTS[d][0]
+            p *= 1 - k.weight(d)
         return round(1 - p, 3)
 
 
 class DetectionEngine:
-    def __init__(self, store: BaselineStore, iam: IamState) -> None:
+    def __init__(self, store: BaselineStore, iam: IamState, knowledge: Knowledge) -> None:
         self.store = store
         self.iam = iam
+        self.k = knowledge
         self.ids: dict[str, IdentityState] = defaultdict(IdentityState)
-        self.minted_keys: dict[str, tuple[Event, str]] = {}  # key -> (create event, minting caller key)
+        self.minted_keys: dict[str, Event] = {}
         self.suspicious_networks: dict[str, set[str]] = defaultdict(set)
         self.suspicious_keys: set[str] = set()
+        self.tainted: set[str] = set()
         self.critical = {r["arn"]: r for r in iam.resources if r["critical"]}
+        self.features_log: list[tuple[Event, set[str]]] = []
 
-    def _fire(self, who: str, detector: str, subject: str, title: str, events: list[Event]) -> Signal | None:
+    # ---- features -------------------------------------------------------------------------------
+
+    def features(self, e: Event, who: str) -> tuple[set[str], dict[str, Any]]:
+        prof = self.store.profile(who)
+        net, fam = network(e.ip), resource_family(e.resource)
+        f: set[str] = set()
+        if prof.total and net not in {network(ip) for ip in prof.ips}:
+            f.add("new_network")
+            self.suspicious_networks[who].add(net)
+        if prof.total and ua_family(e.user_agent) not in {ua_family(u) for u in prof.user_agents}:
+            f.add("new_user_agent")
+        if prof.total and prof.hours and e.time.hour not in prof.hours:
+            f.add("off_hours")
+        if e.source == "iam" and e.name.startswith(("List", "Get")):
+            f.add("iam_read")
+        if e.source == "iam" and not e.raw.get("readOnly", True):
+            f.add("iam_write")
+        f.add("succeeded" if e.succeeded else "denied" if (e.error or "").startswith("AccessDenied") else "error")
+        if e.principal_type == "AssumedRole":
+            f.add("assumed_role")
+        if fam in self.critical:
+            f.add("critical_resource")
+        if e.iam_action in DATA_ACTIONS:
+            f.add("data_action")
+            known = set(prof.resources) | set(self.store.profile(e.principal).resources)
+            if fam not in known:
+                f.add("first_time_resource")
+        if net in self.suspicious_networks[who] or e.access_key in self.suspicious_keys:
+            f.add("suspicious_context")
+
+        fields: dict[str, Any] = {
+            "who": who, "principal": e.principal, "network": net, "ip": e.ip,
+            "ua": e.user_agent.split(" ")[0], "key": f"{e.access_key[:4]}…{e.access_key[-4:]}",
+            "resource": short_resource(fam), "action": e.name, "origin_key": e.origin_key or e.access_key,
+        }
+        if e.iam_action == "iam:CreateAccessKey" and e.succeeded:
+            new_key = ((e.raw.get("responseElements") or {}).get("accessKey") or {}).get("accessKeyId")
+            if new_key:
+                f.add("key_created")
+                fields["new_key"] = new_key
+                self.minted_keys[new_key] = e
+                if "suspicious_context" in f:
+                    self.suspicious_keys.add(new_key)
+        origin = e.origin_key or e.access_key
+        if origin in self.minted_keys and self.minted_keys[origin].id != e.id:
+            age = (e.time - self.minted_keys[origin].time).total_seconds()
+            if age <= 600:
+                f.add("fresh_key")
+                fields["age"] = int(age)
+        if e.name == "AssumeRole" and e.succeeded and "suspicious_context" in f:
+            sk = ((e.raw.get("responseElements") or {}).get("credentials") or {}).get("accessKeyId")
+            if sk:
+                self.suspicious_keys.add(sk)
+        return f, fields
+
+    # ---- detection ------------------------------------------------------------------------------
+
+    def _fire(self, who: str, det: dict, subject: tuple, fields: dict, events: list[Event]) -> Signal | None:
         st = self.ids[who]
-        if (detector, subject) in st.fired:
+        if (det["id"], subject) in st.fired:
             return None
-        st.fired.add((detector, subject))
-        w, sev = WEIGHTS[detector]
-        sig = Signal(detector=detector, title=title, severity=sev, weight=w,
+        st.fired.add((det["id"], subject))
+        sig = Signal(detector=det["id"], title=det.get("title", det["id"]).format_map(_Fmt(fields)),
+                     severity=int(det.get("severity", 5)), weight=float(det["weight"]),
                      evidence_ids=[e.evidence_id for e in events if e.evidence_id], timestamp=events[-1].time)
         st.signals.append(sig)
         return sig
@@ -85,78 +137,43 @@ class DetectionEngine:
         who = e.origin_user or e.principal
         if who in self.iam.d.get("admins", []):
             return []
+        feats, fields = self.features(e, who)
+        self.features_log.append((e, feats))
         out: list[Signal] = []
-        prof = self.store.profile(who)
-        net = network(e.ip)
-
-        def fire(*a):
-            s = self._fire(who, *a)
+        st = self.ids[who]
+        for det in self.k.detectors:
+            if not set(det.get("all_of", [])) <= feats:
+                continue
+            if det.get("any_of") and not set(det["any_of"]) & feats:
+                continue
+            subject = tuple(fields.get(s) for s in det.get("subject", []))
+            events = [e]
+            if det["kind"] == "burst":
+                buf = st.bursts[det["id"]]
+                buf.append(e)
+                window = timedelta(seconds=float(det.get("window_s", 120)))
+                events = [x for x in buf if e.time - x.time <= window]
+                if len(events) < int(det.get("min_count", 3)):
+                    continue
+                fields = {**fields, "n": len(events), "secs": int((e.time - events[0].time).total_seconds())}
+            s = self._fire(who, det, subject, fields, events)
             if s:
                 out.append(s)
-
-        if prof.total and net not in {network(ip) for ip in prof.ips}:
-            self.suspicious_networks[who].add(net)
-            fire("new_source_network", net, f"{who} active from never-seen network {net} ({e.ip})", [e])
-        if prof.total and ua_family(e.user_agent) not in {ua_family(u) for u in prof.user_agents}:
-            fire("new_user_agent", ua_family(e.user_agent),
-                 f"Unfamiliar client for {who}: {e.user_agent.split(' ')[0]}", [e])
-
-        # Keys/sessions minted from a suspicious context are attacker-controlled everywhere; the original leaked
-        # key is shared with legitimate CI, so its activity is attributed by source network instead.
-        from_suspicious = net in self.suspicious_networks[who] or e.access_key in self.suspicious_keys
-
-        if e.source == "iam" and e.name.startswith(("List", "Get")):
-            st = self.ids[who]
-            st.iam_reads.append(e)
-            burst = [x for x in st.iam_reads if e.time - x.time <= timedelta(seconds=120)]
-            if len(burst) >= 3:
-                fire("rapid_iam_enumeration", "burst",
-                     f"{len(burst)} IAM discovery calls in {(e.time - burst[0].time).seconds}s by {who}", burst)
-
-        if e.iam_action == "iam:CreateAccessKey" and e.succeeded:
-            new_key = ((e.raw.get("responseElements") or {}).get("accessKey") or {}).get("accessKeyId")
-            if new_key:
-                self.minted_keys[new_key] = (e, e.access_key)
-                if from_suspicious:
-                    self.suspicious_keys.add(new_key)
-                fire("access_key_created", new_key, f"New long-lived access key {new_key} created for {who}", [e])
-
-        if e.name == "AssumeRole" and e.succeeded and from_suspicious:
-            sk = ((e.raw.get("responseElements") or {}).get("credentials") or {}).get("accessKeyId")
-            if sk:
-                self.suspicious_keys.add(sk)
-
-        origin = e.origin_key or e.access_key
-        if origin in self.minted_keys:
-            created, _ = self.minted_keys[origin]
-            if e.time - created.time <= timedelta(minutes=10) and e.id != created.id:
-                fire("fresh_key_usage", origin,
-                     f"Key {origin} used {int((e.time - created.time).total_seconds())}s after creation "
-                     f"({e.name})", [created, e])
-
-        fam = resource_family(e.resource)
-        if e.iam_action in DATA_ACTIONS:
-            known = set(prof.resources) | set(self.store.profile(e.principal).resources)
-            first_time = fam not in known
-            if first_time:
-                fire("first_time_resource_access", fam,
-                     f"{e.principal} accessed {short_resource(fam)} for the first time in 30 days", [e])
-            if fam in self.critical and (first_time or from_suspicious) and e.succeeded:
-                fire("sensitive_resource_access", f"{e.access_key}:{fam}",
-                     f"Critical asset {short_resource(fam)} read via {e.access_key[:4]}…{e.access_key[-4:]} "
-                     f"from {e.ip}", [e])
-
-        if e.error and e.error.startswith("AccessDenied"):
-            st = self.ids[who]
-            st.denials.append(e)
-            if fam in self.critical or len(st.denials) >= 3:
-                fire("access_denied_sensitive", fam, f"Denied attempt on {short_resource(fam)} by {e.principal}", [e])
+        if out:
+            self.tainted.add(e.id)
+            if e.access_key.startswith("ASIA") or e.access_key in self.minted_keys:
+                self.suspicious_keys.add(e.access_key)
         return out
 
     def score(self, who: str) -> float:
-        return self.ids[who].score
+        return self.ids[who].score(self.k)
 
     def is_attacker_event(self, who: str, e: Event) -> bool:
         if (e.origin_user or e.principal) != who:
             return False
-        return network(e.ip) in self.suspicious_networks[who] or e.access_key in self.suspicious_keys
+        if network(e.ip) in self.suspicious_networks[who] or e.access_key in self.suspicious_keys or e.id in self.tainted:
+            return True
+        if e.name == "AssumeRole" and e.succeeded:
+            sk = ((e.raw.get("responseElements") or {}).get("credentials") or {}).get("accessKeyId")
+            return sk in self.suspicious_keys
+        return False

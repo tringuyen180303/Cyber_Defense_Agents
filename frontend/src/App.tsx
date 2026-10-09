@@ -11,6 +11,7 @@ import { Remediation } from "./components/Remediation";
 import { Verification } from "./components/Verification";
 import { Postmortem } from "./components/Postmortem";
 import { EvidenceDrawer } from "./components/EvidenceDrawer";
+import { Learning } from "./components/Learning";
 
 const TABS = ["Investigation", "Attack timeline", "Blast radius", "Remediation", "Verification", "Postmortem"] as const;
 type Tab = (typeof TABS)[number];
@@ -33,6 +34,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>("Investigation");
   const [follow, setFollow] = useState(true);
   const [drawer, setDrawer] = useState<string | null>(null);
+  const [view, setView] = useState<"incident" | "learning">("incident");
   const lastAuto = useRef<Tab>("Investigation");
 
   useEffect(() => {
@@ -74,11 +76,19 @@ export default function App() {
             <span className="logo">◆</span> Sentinel
             <span className="tag">Autonomous Cloud Incident Response</span>
           </div>
+          <div className="views">
+            <button className={view === "incident" ? "active" : ""} onClick={() => setView("incident")}>
+              Incident response
+            </button>
+            <button className={view === "learning" ? "active" : ""} onClick={() => setView("learning")}>
+              Self-improvement
+            </button>
+          </div>
           <div className="integrations">
             {state.integrations &&
               Object.entries(state.integrations).map(([k, v]) => (
-                <span key={k} className="chip" title={k}>
-                  <b>{k.replace("_", " ")}</b> {v}
+                <span key={k} className="chip" title={`${k.replace("_", " ")}: ${v}`}>
+                  <b>{k.replace("_", " ")}</b> {v.split(" (")[0]}
                 </span>
               ))}
           </div>
@@ -92,6 +102,11 @@ export default function App() {
           </div>
         </header>
 
+        {view === "learning" ? (
+          <main className="learn-main">
+            <Learning />
+          </main>
+        ) : (
         <main className="grid">
           <section className="panel left">
             <EventStream state={state} />
@@ -159,6 +174,7 @@ export default function App() {
             <AgentFeed steps={state.agent_log ?? []} />
           </section>
         </main>
+        )}
         {drawer && <EvidenceDrawer id={drawer} onClose={() => setDrawer(null)} />}
       </div>
     </EvidenceCtx.Provider>

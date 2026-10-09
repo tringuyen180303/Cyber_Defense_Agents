@@ -1,0 +1,12 @@
+id: attack-fast-exfil
+label: attack
+description: Leaked key goes straight to the deploy role and pulls customer documents — no discovery, no persistence.
+start: 2026-10-08T11:40:00Z
+seed: 11
+attacker: {ip: 185.199.64.20, ua: kali}
+expect: {incident: true}
+steps:
+  - {do: api_read, count: 3, spacing: 40}
+  - {api: sts:AssumeRole, after: 60, session_name: gha-8812}
+  - {api: s3:GetObject, as: session, after: 15, bucket: customer-documents, count: 6, spacing: 2, prefix: contracts/2026}
+  - {do: api_read, after: 30}

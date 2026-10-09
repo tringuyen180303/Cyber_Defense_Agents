@@ -54,7 +54,8 @@ class StreamEvent(BaseModel):
 
 class Evidence(BaseModel):
     id: str
-    source: Literal["cloudtrail", "baseline", "deployments", "threat_intel", "semgrep", "iam_state", "sandbox"]
+    source: Literal["cloudtrail", "baseline", "deployments", "threat_intel", "semgrep", "iam_state", "sandbox",
+                    "memory"]
     timestamp: datetime | None = None
     summary: str
     raw: dict[str, Any] | list[Any]
@@ -194,6 +195,7 @@ class Incident(BaseModel):
 
 class Integrations(BaseModel):
     reasoning: str
+    knowledge: str = ""
     event_store: str
     code_scanner: str
     threat_intel: str

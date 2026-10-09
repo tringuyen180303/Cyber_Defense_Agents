@@ -1,0 +1,9 @@
+id: benign-hotfix-off-hours
+label: benign
+description: On-call engineer triggers an emergency deploy at 03:40 UTC.
+start: 2026-10-09T03:40:00Z
+seed: 24
+expect: {incident: false}
+steps:
+  - {do: ci_run, run_id: 4920}
+  - {do: api_read, after: 20, count: 3, spacing: 20}

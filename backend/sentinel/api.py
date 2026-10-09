@@ -12,12 +12,14 @@ from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from .commander import decide, run_incident
+from .learning_api import router as learning_router
 from .run import Run
 from .store import get_store
 
 log = logging.getLogger("sentinel")
 app = FastAPI(title="Sentinel")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.include_router(learning_router)
 
 
 class Hub:

@@ -2,7 +2,7 @@
 
 Outputs (in scenario/fixtures/):
   baseline_events.jsonl   30 days of normal activity used for behavioral baselines
-  incident_events.json    the replayed incident window (normal traffic + attack)
+  incident_events.json    the demo incident window, built from specs/attack-ci-key-classic.yaml
   deployments.json        deploy log used by the investigator
   threat_intel.json       offline IP reputation data
 
@@ -12,6 +12,7 @@ Usage: python scenario/generate_fixtures.py [--scale N]
 from __future__ import annotations
 
 import argparse
+import sys
 import json
 import random
 import uuid
@@ -166,69 +167,6 @@ def baseline(scale: int) -> list[dict]:
     return events
 
 
-def incident() -> list[dict]:
-    t0 = INCIDENT_START
-    ev: list[dict] = []
-    ev += ci_run(t0 + timedelta(seconds=10), 4821)
-    for s in (40, 130, 170, 260, 330):
-        ev.append(api_read(t0 + timedelta(seconds=s)))
-
-    leaked = iam_user("ci-deployer", CI_KEY)
-    new_key = iam_user("ci-deployer", ATTACKER_KEY)
-    a = datetime(2026, 10, 7, 2, 31, 4, tzinfo=timezone.utc)
-
-    def at(m, s):
-        return a.replace(minute=m, second=s)
-
-    ip, ua = ATTACKER_IP, ATTACKER_UA
-    ev += [
-        record(at(31, 4), "sts.amazonaws.com", "GetCallerIdentity", leaked, ip, ua),
-        record(at(31, 48), "iam.amazonaws.com", "ListUsers", leaked, ip, ua),
-        record(at(32, 10), "iam.amazonaws.com", "ListRoles", leaked, ip, ua),
-        record(at(32, 29), "iam.amazonaws.com", "ListAttachedUserPolicies", leaked, ip, ua,
-               req={"userName": "ci-deployer"}),
-        record(at(32, 41), "iam.amazonaws.com", "GetUserPolicy", leaked, ip, ua,
-               req={"userName": "ci-deployer", "policyName": "ci-deployer-access"}),
-        record(at(32, 55), "iam.amazonaws.com", "GetRolePolicy", leaked, ip, ua,
-               req={"roleName": "ci-deploy-role", "policyName": "ci-deploy-permissions"}),
-        record(at(33, 17), "iam.amazonaws.com", "CreateAccessKey", leaked, ip, ua, read_only=False,
-               req={"userName": "ci-deployer"},
-               resp={"accessKey": {"userName": "ci-deployer", "accessKeyId": ATTACKER_KEY, "status": "Active",
-                                   "createDate": ts(at(33, 17))}}),
-        record(at(33, 52), "sts.amazonaws.com", "GetCallerIdentity", new_key, ip, ua),
-        record(at(34, 2), "sts.amazonaws.com", "AssumeRole", new_key, ip, ua,
-               req={"roleArn": f"arn:aws:iam::{ACCOUNT}:role/ci-deploy-role", "roleSessionName": "gha-debug"},
-               resp={"credentials": {"accessKeyId": ATTACKER_SESSION, "expiration": ts(at(34, 2) + timedelta(hours=1))},
-                     "assumedRoleUser": {"arn": f"arn:aws:sts::{ACCOUNT}:assumed-role/ci-deploy-role/gha-debug"}}),
-    ]
-    sess = role_session("ci-deploy-role", ATTACKER_SESSION, "gha-debug", at(34, 2))
-    ev += [
-        record(at(34, 20), "s3.amazonaws.com", "ListBuckets", sess, ip, ua),
-        record(at(34, 41), "s3.amazonaws.com", "ListObjects", sess, ip, ua,
-               req={"bucketName": "customer-documents"}, data_event=True),
-    ]
-    docs = [f"contracts/2026/{n}.pdf" for n in (4401, 4402, 4415, 4420, 4433)] + \
-           [f"invoices/2026/{n}.pdf" for n in (9102, 9117, 9120, 9188, 9191)] + \
-           [f"kyc/2026/{n}.pdf" for n in (771, 772, 790, 805)]
-    t = at(35, 41)
-    for d in docs:
-        ev.append(record(t, "s3.amazonaws.com", "GetObject", sess, ip, ua,
-                         req={"bucketName": "customer-documents", "key": d}, data_event=True))
-        t += timedelta(seconds=rng.randint(2, 5))
-    ev += [
-        record(at(36, 44), "s3.amazonaws.com", "ListObjects", sess, ip, ua,
-               req={"bucketName": "model-artifacts"}, data_event=True),
-        record(at(37, 2), "secretsmanager.amazonaws.com", "GetSecretValue", sess, ip, ua,
-               req={"secretId": "ci/npm-token"}, resources=[{"ARN": SECRET_NPM, "type": "AWS::SecretsManager::Secret"}]),
-        record(at(37, 15), "secretsmanager.amazonaws.com", "GetSecretValue", sess, ip, ua,
-               req={"secretId": "prod/db-password"}, error="AccessDenied",
-               resources=[{"ARN": SECRET_DB, "type": "AWS::SecretsManager::Secret"}]),
-    ]
-    ev.append(api_read(at(37, 40)))
-    ev.sort(key=lambda e: e["eventTime"])
-    return ev
-
-
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--scale", type=int, default=1, help="multiplier for baseline API traffic volume")
@@ -240,7 +178,10 @@ def main() -> None:
         for e in base:
             f.write(json.dumps(e) + "\n")
 
-    inc = incident()
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
+    from sentinel.scenarios import load
+
+    inc = load(Path(__file__).parent / "specs" / "attack-ci-key-classic.yaml").records
     (OUT / "incident_events.json").write_text(json.dumps(inc, indent=1))
     (OUT / "deployments.json").write_text(json.dumps([
         {"id": "deploy-4819", "service": "sentinel-api", "time": "2026-10-06T21:48:12Z", "actor": "github-actions",
