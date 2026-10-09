@@ -18,6 +18,7 @@ from .learner import improve
 from .llm import LLM
 from .redteam import hunt
 from .scenarios import DISCOVERED_DIR, build, load_suite, save_discovered
+from .store import get_store
 
 
 def learn(*, log: Callable[[str], None] = print, use_llm: bool = False, trigger: str = "manual") -> dict[str, Any]:
@@ -103,6 +104,9 @@ def reset() -> None:
     kb.PENDING.unlink(missing_ok=True)
     shutil.rmtree(DISCOVERED_DIR, ignore_errors=True)
     shutil.rmtree(kb.MEMORY.parent, ignore_errors=True)
+    store = get_store()
+    if store.supports_sql:
+        store.client.command(f"TRUNCATE TABLE {store.EVAL_TABLE}")
 
 
 def main() -> None:

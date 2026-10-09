@@ -55,7 +55,7 @@ class StreamEvent(BaseModel):
 class Evidence(BaseModel):
     id: str
     source: Literal["cloudtrail", "baseline", "deployments", "threat_intel", "semgrep", "iam_state", "sandbox",
-                    "memory"]
+                    "memory", "clickhouse"]
     timestamp: datetime | None = None
     summary: str
     raw: dict[str, Any] | list[Any]

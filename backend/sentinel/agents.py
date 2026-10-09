@@ -116,6 +116,50 @@ class Investigator:
         self.facts["semgrep"] = out["findings"]
         return out
 
+    def hunt_sql(self, query: str, purpose: str = "") -> dict[str, Any]:
+        try:
+            res = self.run.store.sql(query)
+        except Exception as exc:  # noqa: BLE001
+            return {"error": str(exc)}
+        eid = self.run.add_evidence("clickhouse", f"ClickHouse hunt{': ' + purpose if purpose else ''} — "
+                                                  f"{res['row_count']} row(s)", {"query": query, **res})
+        return {"evidence_id": eid, **res}
+
+    def account_wide_hunt(self) -> dict[str, Any]:
+        """Where else have the attacker's IPs appeared: any identity in the baseline, or earlier incident replays."""
+        if "hunt" in self.cache:
+            return self.cache["hunt"]
+        inc, store = self.run.incident, self.run.store
+        q = (f"SELECT source, principal, ip, count() AS events, min(time) AS first_seen, max(time) AS last_seen "
+             f"FROM {store.TABLE} WHERE ip IN %(ips)s AND source != %(run)s "
+             f"GROUP BY source, principal, ip ORDER BY first_seen")
+        res = store.sql(q, {"ips": list(inc.attacker_ips), "run": self.run.run_dir.name if self.run.run_dir else ""})
+        rows = [dict(zip(res["columns"], r)) for r in res["rows"]]
+        base = [r for r in rows if r["source"] == "baseline"]
+        prior = sorted({r["source"] for r in rows if r["source"] != "baseline"})
+        eid = self.run.add_evidence(
+            "clickhouse", f"ClickHouse account-wide hunt for {', '.join(inc.attacker_ips)}: "
+                          f"{len(base)} baseline match(es) across {store.count():,} events, "
+                          f"{len(prior)} earlier incident replay(s)", {"query": q, "rows": rows})
+        out = {"evidence_id": eid, "baseline_matches": base, "prior_runs": prior}
+        self.cache["hunt"] = out
+        return out
+
+    def _hunt_claim(self) -> Claim | None:
+        h = self.cache.get("hunt")
+        if not h:
+            return None
+        ips = ", ".join(self.run.incident.attacker_ips)
+        if h["baseline_matches"]:
+            who = sorted({r["principal"] for r in h["baseline_matches"]})
+            text = f"ClickHouse: {ips} previously used by {', '.join(who)} in the 30-day baseline"
+        else:
+            text = (f"ClickHouse: {ips} never appears in 30 days of account-wide CloudTrail "
+                    f"({self.run.store.count():,} events, all identities)")
+        if h["prior_runs"]:
+            text += f"; also seen in {len(h['prior_runs'])} earlier incident replay(s)"
+        return Claim(text=text, evidence_ids=[h["evidence_id"]])
+
     TOOL_SPECS = {
         "baseline_profile": {"description": "30-day behavioral baseline (source IPs, user agents, actions, "
                                             "resources) for an IAM user or role.",
@@ -150,8 +194,20 @@ class Investigator:
         return Claim(text=f"Matches the pattern of past incident {m['incident_id']} ({sim:.0%} similar), root cause: "
                           f"{m['root_cause']}", evidence_ids=[eid])
 
+    SQL_SPEC = {
+        "description": "Read-only ClickHouse SQL over the CloudTrail lake. Table `cloudtrail` columns: source "
+                       "('baseline' = 30-day history, otherwise an incident replay id), event_id, time, event_name, "
+                       "event_source, principal, principal_type, origin_user, access_key, origin_key, iam_action, "
+                       "resource, resource_family, ip, user_agent, error ('' when succeeded), read_only. "
+                       "Single SELECT only; max 200 rows.",
+        "parameters": {"type": "object", "properties": {"query": {"type": "string"},
+                                                         "purpose": {"type": "string"}}, "required": ["query"]}}
+
     def _tools(self):
-        return {n: (spec, getattr(self, n)) for n, spec in self.TOOL_SPECS.items()}
+        specs = dict(self.TOOL_SPECS)
+        if self.run.store.supports_sql:
+            specs["hunt_sql"] = self.SQL_SPEC
+        return {n: (spec, getattr(self, n)) for n, spec in specs.items()}
 
     def _on_tool(self, name: str, args: dict, result: Any) -> None:
         arg = ", ".join(f"{k}={v}" for k, v in args.items())
@@ -165,10 +221,12 @@ class Investigator:
                     *([("baseline_profile", {"identity": role})] if role else []),
                     ("deployments", {}),
                     *[("threat_intel", {"ip": ip}) for ip in inc.attacker_ips],
-                    ("scan_ci_repo", {})]
+                    ("scan_ci_repo", {}),
+                    *([("account_wide_hunt", {})] if self.run.store.supports_sql and inc.attacker_ips else [])]
         for name, args in required:
             key = {"baseline_profile": f"baseline:{args.get('identity')}", "deployments": "deployments",
-                   "threat_intel": f"intel:{args.get('ip')}", "scan_ci_repo": "semgrep"}[name]
+                   "threat_intel": f"intel:{args.get('ip')}", "scan_ci_repo": "semgrep",
+                   "account_wide_hunt": "hunt"}[name]
             if key not in self.cache:
                 result = getattr(self, name)(**args)
                 self._on_tool(name, args, result)
@@ -342,8 +400,9 @@ class Investigator:
         memory_claim = self._recall()
         scores = self._score()
         offline = self._offline_claims()
-        if memory_claim:
-            offline["credential_compromise"]["supporting"].append(memory_claim)
+        for extra in (memory_claim, self._hunt_claim()):
+            if extra:
+                offline["credential_compromise"]["supporting"].append(extra)
         hyps = []
         llm_by_id = {h.get("id"): h for h in (llm_out or {}).get("hypotheses", [])}
         if llm_by_id:

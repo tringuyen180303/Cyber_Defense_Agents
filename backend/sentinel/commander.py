@@ -81,6 +81,13 @@ async def replay(run: Run) -> None:
         run.changed()
         if run.replay_delay:
             await asyncio.sleep(run.replay_delay)
+    if run.persist and run.store.supports_sql:
+        try:
+            run.store.ingest(run.run_dir.name, run.events)
+            run.log("Detection", "tool", f"Ingested {len(run.events)} live events into {run.store.name} "
+                                         f"(source='{run.run_dir.name}')")
+        except Exception as exc:  # noqa: BLE001
+            run.log("Detection", "error", f"{run.store.name} ingest failed: {exc}")
     if run.state.incident:
         atk = run.attacker_events()
         with run.lock:

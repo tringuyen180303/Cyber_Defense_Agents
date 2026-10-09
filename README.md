@@ -20,6 +20,31 @@ uv run uvicorn sentinel.api:app --port 8000
 cd frontend && npm install && npm run dev        # http://127.0.0.1:5173
 ```
 
+### ClickHouse (CloudTrail lake)
+
+```bash
+docker compose up -d --wait            # ClickHouse on :8123 (HTTP) and :19000 (native)
+cp .env.example .env                   # sets CLICKHOUSE_URL=http://sentinel:sentinel@localhost:8123/sentinel
+```
+
+With `CLICKHOUSE_URL` set, Sentinel uses ClickHouse instead of the in-memory store:
+
+- `sentinel.cloudtrail` — the 30-day baseline (`source = 'baseline'`, loaded once) plus every live incident
+  replay (`source = <run id>`). Behavioral baselines and least-privilege policies are computed with SQL.
+- The Investigator runs an account-wide hunt for the attacker's IPs (baseline across all identities, and earlier
+  incidents) and, in LLM mode, gets a `hunt_sql` tool. Agent SQL is a single SELECT, run with `readonly=2`,
+  a 5 s limit and at most 200 rows; results become evidence (`source: clickhouse`).
+- `sentinel.eval_results` — one row per scenario per promoted knowledge version, so learning is queryable:
+
+```sql
+SELECT knowledge_version, avgIf(detected, label = 'attack') AS recall,
+       countIf(detected AND label = 'benign') AS false_positives, avgIf(plan_attempts, detected) AS attempts
+FROM sentinel.eval_results GROUP BY knowledge_version ORDER BY knowledge_version;
+```
+
+Open a shell with `docker exec -it sentinel-clickhouse clickhouse-client -u sentinel --password sentinel -d sentinel`.
+If ClickHouse is unreachable Sentinel logs a warning and falls back to the in-memory store.
+
 Click **Simulate credential attack** to replay the incident. Switch to **Self-improvement** to run red-team
 rounds, review candidates and approve promotions.
 
@@ -39,7 +64,7 @@ uv run python -m sentinel.selfplay --reset --rounds 0          # back to hand-wr
 |---|---|---|
 | `OPENAI_API_KEY` | – | enables LLM reasoning; without it every agent uses deterministic offline reasoning |
 | `SENTINEL_MODEL` | `gpt-4.1` | |
-| `CLICKHOUSE_URL` | – | event store; in-memory otherwise (`uv sync --extra clickhouse`) |
+| `CLICKHOUSE_URL` | – | ClickHouse CloudTrail lake (see above); in-memory otherwise |
 | `SENTINEL_REPLAY_DELAY` / `SENTINEL_AGENT_PACE` | `0.35` / `0.8` | demo pacing in seconds |
 | `SENTINEL_AUTO_APPROVE` | off | skip the human approval step for REVIEW actions |
 

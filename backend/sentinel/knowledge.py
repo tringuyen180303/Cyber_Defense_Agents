@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 import json
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,8 @@ from typing import Any
 import yaml
 
 from . import config
+
+log = logging.getLogger(__name__)
 
 KDIR = config.ROOT / "knowledge"
 VERSIONS = KDIR / "versions"
@@ -107,6 +110,12 @@ def scorecard_path(v: int) -> Path:
 
 def save_scorecard(v: int, card: dict[str, Any]) -> None:
     scorecard_path(v).write_text(json.dumps(card, indent=1, default=str))
+    from .store import get_store
+
+    try:
+        get_store().record_eval(v, card.get("results", []))
+    except Exception as exc:  # noqa: BLE001
+        log.warning("could not record scorecard v%s in the event store: %s", v, exc)
 
 
 def load_scorecard(v: int) -> dict[str, Any] | None:
