@@ -11,3 +11,5 @@ eval/results/
 knowledge/memory/
 knowledge/pending.yaml
 frontend/tsconfig.tsbuildinfo
+guild/sentinel/.guild/
+guild/sentinel/dist/

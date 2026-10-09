@@ -1,0 +1,21 @@
+#!/bin/sh
+# Records the call and returns fixture JSON. Never contacts AWS.
+printf '%s\n' "aws $*" >> /tmp/trace
+cmd="$1 ${2-}"
+case "$cmd" in
+  "sts assume-role")
+    printf '%s\n' '{"Credentials":{"AccessKeyId":"ASIASANDBOX","SecretAccessKey":"sandbox","SessionToken":"sandbox"}}'
+    ;;
+  "sts get-caller-identity")
+    printf '%s\n' '{"Account":"111122223333","Arn":"arn:aws:iam::111122223333:user/ci-deployer"}'
+    ;;
+  "secretsmanager get-secret-value")
+    printf '%s\n' 'sandbox-npm-token'
+    ;;
+  "ecr get-login-password")
+    printf '%s\n' 'sandbox-password'
+    ;;
+  *)
+    printf '%s\n' '{}'
+    ;;
+esac

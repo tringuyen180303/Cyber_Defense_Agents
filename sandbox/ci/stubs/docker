@@ -1,0 +1,6 @@
+#!/bin/sh
+printf '%s\n' "docker $*" >> /tmp/trace
+if [ "${1-}" = "login" ]; then
+  cat >/dev/null
+fi
+exit 0

@@ -164,6 +164,13 @@ td { padding: 3px 8px; border-top: 1px solid var(--line); }
 .path { font-size: 12px; padding: 2px 0; }
 .path.bad { color: #fca5a5; }
 
+.sandbox-loop { margin-bottom: 16px; }
+.sandbox-note, .check-line { font-size: 12.5px; margin: 4px 0; }
+.check-line.bad { color: #fecaca; }
+.check-line.ok { color: #86efac; }
+.culprit, .fix-note { margin-top: 8px; padding: 8px 10px; border-radius: 6px; font-size: 12.5px; }
+.culprit { background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.35); }
+.fix-note { background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.3); }
 .approval { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-radius: 8px; background: rgba(124, 58, 237, 0.15); border: 1px solid #7c3aed; margin-bottom: 12px; }
 .tier { margin-bottom: 14px; }
 .tier-head { margin-bottom: 6px; }

@@ -1,0 +1,287 @@
+{
+ "version": 1,
+ "metrics": {
+  "scenarios": 10,
+  "attacks": 6,
+  "benign": 4,
+  "recall": 0.5,
+  "false_positives": 1,
+  "avg_attempts": 2.0,
+  "first_try_rate": 0.0,
+  "avg_time_to_detect": 2.667,
+  "contained_rate": 1.0,
+  "prod_pass_rate": 1.0,
+  "citation_validity": 1.0,
+  "errors": 0
+ },
+ "results": [
+  {
+   "id": "attack-ci-key-classic",
+   "label": "attack",
+   "expected_incident": true,
+   "detected": true,
+   "correct": true,
+   "confidence": 0.94,
+   "events_to_detect": 4,
+   "plan_attempts": 2,
+   "prod_checks_passed": 15,
+   "prod_checks_total": 15,
+   "contained": true,
+   "citations_valid": 1.0,
+   "detectors_fired": [
+    "access_denied_sensitive",
+    "access_key_created",
+    "first_time_resource_access",
+    "fresh_key_usage",
+    "new_source_network",
+    "new_user_agent",
+    "rapid_iam_enumeration",
+    "sensitive_resource_access"
+   ],
+   "repairs": [
+    {
+     "culprit_kind": "deactivate_access_key",
+     "conditions": [
+      "key_in_use_by_ci"
+     ],
+     "replacement_kind": "rotate_access_key",
+     "failed_checks": [
+      "CI pipeline can assume ci-deploy-role (key AKIA\u2026EY01)",
+      "CI pipeline: ecr:GetAuthorizationToken *",
+      "CI pipeline: ecr:PutImage repository/sentinel-api",
+      "CI pipeline: s3:PutObject s3://build-artifacts/*",
+      "CI pipeline: secretsmanager:GetSecretValue secret:ci/npm-token"
+     ],
+     "incident": "INC-EVAL",
+     "scenario": "attack-ci-key-classic"
+    }
+   ],
+   "error": null
+  },
+  {
+   "id": "attack-fast-exfil",
+   "label": "attack",
+   "expected_incident": true,
+   "detected": true,
+   "correct": true,
+   "confidence": 0.727,
+   "events_to_detect": 2,
+   "plan_attempts": 2,
+   "prod_checks_passed": 13,
+   "prod_checks_total": 13,
+   "contained": true,
+   "citations_valid": 1.0,
+   "detectors_fired": [
+    "first_time_resource_access",
+    "new_source_network",
+    "new_user_agent",
+    "sensitive_resource_access"
+   ],
+   "repairs": [
+    {
+     "culprit_kind": "deactivate_access_key",
+     "conditions": [
+      "key_in_use_by_ci"
+     ],
+     "replacement_kind": "rotate_access_key",
+     "failed_checks": [
+      "CI pipeline can assume ci-deploy-role (key AKIA\u2026EY01)",
+      "CI pipeline: ecr:GetAuthorizationToken *",
+      "CI pipeline: ecr:PutImage repository/sentinel-api",
+      "CI pipeline: s3:PutObject s3://build-artifacts/*",
+      "CI pipeline: secretsmanager:GetSecretValue secret:ci/npm-token"
+     ],
+     "incident": "INC-EVAL",
+     "scenario": "attack-fast-exfil"
+    }
+   ],
+   "error": null
+  },
+  {
+   "id": "attack-persistence-only",
+   "label": "attack",
+   "expected_incident": true,
+   "detected": true,
+   "correct": true,
+   "confidence": 0.664,
+   "events_to_detect": 2,
+   "plan_attempts": 2,
+   "prod_checks_passed": 13,
+   "prod_checks_total": 13,
+   "contained": true,
+   "citations_valid": 1.0,
+   "detectors_fired": [
+    "access_key_created",
+    "new_source_network",
+    "new_user_agent"
+   ],
+   "repairs": [
+    {
+     "culprit_kind": "deactivate_access_key",
+     "conditions": [
+      "key_in_use_by_ci"
+     ],
+     "replacement_kind": "rotate_access_key",
+     "failed_checks": [
+      "CI pipeline can assume ci-deploy-role (key AKIA\u2026EY01)",
+      "CI pipeline: ecr:GetAuthorizationToken *",
+      "CI pipeline: ecr:PutImage repository/sentinel-api",
+      "CI pipeline: s3:PutObject s3://build-artifacts/*",
+      "CI pipeline: secretsmanager:GetSecretValue secret:ci/npm-token"
+     ],
+     "incident": "INC-EVAL",
+     "scenario": "attack-persistence-only"
+    }
+   ],
+   "error": null
+  },
+  {
+   "id": "benign-admin-review",
+   "label": "benign",
+   "expected_incident": false,
+   "detected": false,
+   "correct": true,
+   "confidence": 0.0,
+   "events_to_detect": null,
+   "plan_attempts": null,
+   "prod_checks_passed": null,
+   "prod_checks_total": null,
+   "contained": null,
+   "citations_valid": null,
+   "detectors_fired": [],
+   "repairs": [],
+   "error": null
+  },
+  {
+   "id": "benign-hotfix-off-hours",
+   "label": "benign",
+   "expected_incident": false,
+   "detected": false,
+   "correct": true,
+   "confidence": 0.0,
+   "events_to_detect": null,
+   "plan_attempts": null,
+   "prod_checks_passed": null,
+   "prod_checks_total": null,
+   "contained": null,
+   "citations_valid": null,
+   "detectors_fired": [],
+   "repairs": [],
+   "error": null
+  },
+  {
+   "id": "benign-new-runner-range",
+   "label": "benign",
+   "expected_incident": false,
+   "detected": true,
+   "correct": false,
+   "confidence": 0.659,
+   "events_to_detect": 7,
+   "plan_attempts": 2,
+   "prod_checks_passed": 15,
+   "prod_checks_total": 15,
+   "contained": true,
+   "citations_valid": 1.0,
+   "detectors_fired": [
+    "first_time_resource_access",
+    "new_source_network",
+    "sensitive_resource_access"
+   ],
+   "repairs": [
+    {
+     "culprit_kind": "deactivate_access_key",
+     "conditions": [
+      "key_in_use_by_ci"
+     ],
+     "replacement_kind": "rotate_access_key",
+     "failed_checks": [
+      "CI pipeline can assume ci-deploy-role (key AKIA\u2026EY01)",
+      "CI pipeline: ecr:GetAuthorizationToken *",
+      "CI pipeline: ecr:PutImage repository/sentinel-api",
+      "CI pipeline: s3:PutObject s3://build-artifacts/*",
+      "CI pipeline: secretsmanager:GetSecretValue secret:ci/npm-token"
+     ],
+     "incident": "INC-EVAL",
+     "scenario": "benign-new-runner-range"
+    }
+   ],
+   "error": null
+  },
+  {
+   "id": "benign-normal-day",
+   "label": "benign",
+   "expected_incident": false,
+   "detected": false,
+   "correct": true,
+   "confidence": 0.0,
+   "events_to_detect": null,
+   "plan_attempts": null,
+   "prod_checks_passed": null,
+   "prod_checks_total": null,
+   "contained": null,
+   "citations_valid": null,
+   "detectors_fired": [],
+   "repairs": [],
+   "error": null
+  },
+  {
+   "id": "rt-fast-exfil-known-network+drop-discovery",
+   "label": "attack",
+   "expected_incident": true,
+   "detected": false,
+   "correct": false,
+   "confidence": 0.512,
+   "events_to_detect": null,
+   "plan_attempts": null,
+   "prod_checks_passed": null,
+   "prod_checks_total": null,
+   "contained": null,
+   "citations_valid": null,
+   "detectors_fired": [
+    "first_time_resource_access",
+    "sensitive_resource_access"
+   ],
+   "repairs": [],
+   "error": null
+  },
+  {
+   "id": "rt-fast-exfil-known-network+slow",
+   "label": "attack",
+   "expected_incident": true,
+   "detected": false,
+   "correct": false,
+   "confidence": 0.512,
+   "events_to_detect": null,
+   "plan_attempts": null,
+   "prod_checks_passed": null,
+   "prod_checks_total": null,
+   "contained": null,
+   "citations_valid": null,
+   "detectors_fired": [
+    "first_time_resource_access",
+    "sensitive_resource_access"
+   ],
+   "repairs": [],
+   "error": null
+  },
+  {
+   "id": "rt-persistence-only-known-network+retarget",
+   "label": "attack",
+   "expected_incident": true,
+   "detected": false,
+   "correct": false,
+   "confidence": 0.4,
+   "events_to_detect": null,
+   "plan_attempts": null,
+   "prod_checks_passed": null,
+   "prod_checks_total": null,
+   "contained": null,
+   "citations_valid": null,
+   "detectors_fired": [
+    "access_key_created"
+   ],
+   "repairs": [],
+   "error": null
+  }
+ ]
+}

@@ -1,4 +1,4 @@
-import type { Action, Incident, Risk } from "../types";
+import type { Action, CheckResult, Incident, Risk } from "../types";
 import { EvList, hms } from "../util";
 
 const TIERS: { risk: Risk; label: string; note: string }[] = [
@@ -33,6 +33,7 @@ export function Remediation({
   const pending = live.filter((a) => a.status === "awaiting_approval");
   return (
     <div className="remediation">
+      <SandboxLoop inc={inc} phase={phase} />
       {phase === "awaiting_approval" && pending.length > 0 && (
         <div className="approval">
           <div>
@@ -67,6 +68,103 @@ export function Remediation({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function SandboxLoop({ inc, phase }: { inc: Incident; phase: string }) {
+  const attempts = [
+    ...new Set([
+      ...inc.actions.map((a) => a.attempt),
+      ...inc.verification.filter((c) => c.environment === "sandbox").map((c) => c.attempt),
+    ]),
+  ].sort((a, b) => a - b);
+  const latest = attempts[attempts.length - 1] ?? 1;
+  const production = inc.verification.filter((c) => c.environment === "production");
+  if (!attempts.length && phase !== "verifying") return null;
+  return (
+    <div className="sandbox-loop">
+      <div className="label">
+        IAM sandbox — the plan is applied to a copy of the account. CI jobs run separately in Docker with network off.
+      </div>
+      {(attempts.length ? attempts : [1]).map((n) => {
+        const checks = inc.verification.filter((c) => c.environment === "sandbox" && c.attempt === n);
+        const failed = checks.filter((c) => !c.passed);
+        const testing = !checks.length && phase === "verifying" && n === latest;
+        const culprits = inc.actions.filter(
+          (a) => a.attempt === n && a.status_reason.startsWith("Sandbox ablation"),
+        );
+        const state = testing ? "testing" : failed.length ? "fail" : checks.length ? "pass" : "testing";
+        return (
+          <div key={n} className={`vgroup ${state === "pass" ? "pass" : state === "fail" ? "fail" : ""}`}>
+            <div className="vhead">
+              <span className={`badge ${state === "pass" ? "ok" : state === "fail" ? "bad" : ""}`}>
+                {state === "pass" ? "PASS" : state === "fail" ? "FAIL" : "TESTING"}
+              </span>
+              <b>Plan v{n}</b>
+              <span className="muted">
+                {testing
+                  ? "cloning IAM and replaying the attack"
+                  : checks.length
+                    ? `${checks.length - failed.length}/${checks.length} checks`
+                    : ""}
+              </span>
+            </div>
+            {testing && (
+              <p className="sandbox-note">
+                Applying this plan to a copy of production IAM, then replaying the attack and the legitimate CI
+                workload. Nothing here touches the account.
+              </p>
+            )}
+            {failed.map((c) => (
+              <div key={c.id} className="check-line bad">
+                ✗ {c.name} <span className="muted">— {c.detail}</span>
+              </div>
+            ))}
+            {state === "pass" && <Passed checks={checks} />}
+            {culprits.length > 0 && (
+              <div className="culprit">
+                Ablation pinned {culprits.map((a) => `${a.id} ${a.title}`).join("; ")}. The planner replaces
+                {culprits.length > 1 ? " them" : " it"} and retests the plan.
+              </div>
+            )}
+            {state === "pass" && n === latest && (
+              <div className="fix-note">
+                Sandbox passed. SAFE actions execute on their own. REVIEW actions wait for approval. DANGEROUS
+                actions stay blocked.
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {production.length > 0 && (
+        <div className={`vgroup ${production.every((c) => c.passed) ? "pass" : "fail"}`}>
+          <div className="vhead">
+            <span className={`badge ${production.every((c) => c.passed) ? "ok" : "bad"}`}>
+              {production.every((c) => c.passed) ? "PASS" : "FAIL"}
+            </span>
+            <b>Production</b>
+            <span className="muted">
+              {production.filter((c) => c.passed).length}/{production.length} checks after execution
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Passed({ checks }: { checks: CheckResult[] }) {
+  const cats = [
+    ["attack_blocked", "attack replay blocked"],
+    ["app_healthy", "CI and production API healthy"],
+    ["exposure", "exposure reduced"],
+    ["guardrail", "guardrails hold"],
+  ] as const;
+  const shown = cats.filter(([cat]) => checks.some((c) => c.category === cat));
+  return (
+    <div className="check-line ok">
+      ✓ {shown.map(([, label]) => label).join(" · ")}
     </div>
   );
 }

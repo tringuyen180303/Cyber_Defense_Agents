@@ -1,0 +1,137 @@
+version: 3
+parent: 2
+created: '2026-10-09T22:44:32.284590+00:00'
+summary: new detector learned_firsttime_offhours (all_of ['first_time_resource', 'off_hours'], weight 0.4)
+open_threshold: 0.6
+min_detectors: 2
+sev1_threshold: 0.85
+detectors:
+- id: new_source_network
+  kind: rule
+  weight: 0.3
+  severity: 6
+  all_of:
+  - new_network
+  subject:
+  - network
+  title: '{who} active from never-seen network {network} ({ip})'
+- id: new_user_agent
+  kind: rule
+  weight: 0.2
+  severity: 4
+  all_of:
+  - new_user_agent
+  subject:
+  - ua
+  title: 'Unfamiliar client for {who}: {ua}'
+- id: rapid_iam_enumeration
+  kind: burst
+  weight: 0.35
+  severity: 7
+  all_of:
+  - iam_read
+  window_s: 120
+  min_count: 3
+  subject: []
+  title: '{n} IAM discovery calls in {secs}s by {who}'
+- id: access_key_created
+  kind: rule
+  weight: 0.4
+  severity: 8
+  all_of:
+  - key_created
+  subject:
+  - new_key
+  title: New long-lived access key {new_key} created for {who}
+- id: fresh_key_usage
+  kind: rule
+  weight: 0.3
+  severity: 7
+  all_of:
+  - fresh_key
+  subject:
+  - origin_key
+  title: Key {origin_key} used {age}s after creation ({action})
+- id: first_time_resource_access
+  kind: rule
+  weight: 0.1
+  severity: 6
+  all_of:
+  - data_action
+  - first_time_resource
+  subject:
+  - resource
+  title: '{principal} accessed {resource} for the first time in 30 days'
+- id: sensitive_resource_access
+  kind: rule
+  weight: 0.35
+  severity: 8
+  all_of:
+  - data_action
+  - critical_resource
+  - succeeded
+  any_of:
+  - first_time_resource
+  - suspicious_context
+  subject:
+  - key
+  - resource
+  title: Critical asset {resource} read via {key} from {ip}
+- id: access_denied_sensitive
+  kind: rule
+  weight: 0.2
+  severity: 6
+  all_of:
+  - denied
+  - critical_resource
+  subject:
+  - resource
+  title: Denied attempt on {resource} by {principal}
+- id: learned_offhours_suspiciouscontext
+  kind: rule
+  weight: 0.4
+  severity: 7
+  all_of:
+  - off_hours
+  - suspicious_context
+  subject:
+  - key
+  title: 'Learned pattern (off_hours + suspicious_context): {principal} {action} {resource} from {ip}'
+  learned_from:
+  - rt-fast-exfil-known-network+drop-discovery
+  - rt-fast-exfil-known-network+slow
+- id: learned_critical_iamwrite
+  kind: rule
+  weight: 0.4
+  severity: 7
+  all_of:
+  - critical_resource
+  - iam_write
+  subject:
+  - resource
+  title: 'Learned pattern (critical_resource + iam_write): {principal} {action} {resource} from {ip}'
+  learned_from:
+  - rt-persistence-only-known-network+retarget
+- id: learned_firsttime_offhours
+  kind: rule
+  weight: 0.4
+  severity: 7
+  all_of:
+  - first_time_resource
+  - off_hours
+  subject:
+  - key
+  title: 'Learned pattern (first_time_resource + off_hours): {principal} {action} {resource} from {ip}'
+  learned_from:
+  - rt-fast-exfil-known-network+secrets-focus
+playbooks:
+- id: PB-1
+  when:
+    kind: deactivate_access_key
+    conditions:
+    - key_in_use_by_ci
+  then:
+    kind: rotate_access_key
+  reason: "deactivate_access_key with key_in_use_by_ci broke: CI pipeline can assume ci-deploy-role (key AKIA\u2026\
+    EY01)"
+  learned_from: scenario attack-ci-key-classic

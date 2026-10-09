@@ -116,6 +116,23 @@ class Investigator:
         self.facts["semgrep"] = out["findings"]
         return out
 
+    def inspect_ci(self) -> dict[str, Any]:
+        if "ci" in self.cache:
+            return self.cache["ci"]
+        from .ci_sandbox import context
+
+        ctx = context()
+        where = "Docker sandbox, network off" if ctx["engine"] == "docker" else "read-only static scan (Docker unavailable)"
+        calls = ", ".join(ctx["calls"][:8]) or "no external commands"
+        eid = self.run.add_evidence(
+            "sandbox", f"CI job inspected in a {where}. It would call: {calls}. Nothing was sent to the network "
+                       f"and nothing was written on the host.",
+            {"engine": ctx["engine"], "network": ctx["network"], "calls": ctx["calls"], "trace": ctx["trace"]})
+        out = {"evidence_id": eid, **ctx}
+        self.cache["ci"] = out
+        self.facts["ci"] = out
+        return out
+
     def hunt_sql(self, query: str, purpose: str = "") -> dict[str, Any]:
         try:
             res = self.run.store.sql(query)
@@ -144,6 +161,13 @@ class Investigator:
         out = {"evidence_id": eid, "baseline_matches": base, "prior_runs": prior}
         self.cache["hunt"] = out
         return out
+
+    def _ci_claim(self) -> Claim | None:
+        ci = self.facts.get("ci")
+        if not ci or not ci.get("calls"):
+            return None
+        return Claim(text=f"CI sandbox ({ci['engine']}, network {ci['network']}): the deploy job would call "
+                          f"{', '.join(ci['calls'][:8])}", evidence_ids=[ci["evidence_id"]])
 
     def _hunt_claim(self) -> Claim | None:
         h = self.cache.get("hunt")
@@ -176,8 +200,12 @@ class Investigator:
         "threat_intel": {"description": "Reputation, ASN and blocklist status for an IP.",
                          "parameters": {"type": "object", "properties": {"ip": {"type": "string"}},
                                         "required": ["ip"]}},
-        "scan_ci_repo": {"description": "Run Semgrep on the CI repository that uses the compromised credential.",
+        "scan_ci_repo": {"description": "Run Semgrep on the CI repository that uses the compromised credential. "
+                                       "Runs inside a Docker sandbox with no network when Docker is available.",
                          "parameters": {"type": "object", "properties": {}}},
+        "inspect_ci": {"description": "Run the CI deploy job in a Docker sandbox (network off, no host writes) and "
+                                      "return the commands it would have sent to AWS, npm and Docker.",
+                       "parameters": {"type": "object", "properties": {}}},
     }
 
     def _recall(self) -> Claim | None:
@@ -222,10 +250,11 @@ class Investigator:
                     ("deployments", {}),
                     *[("threat_intel", {"ip": ip}) for ip in inc.attacker_ips],
                     ("scan_ci_repo", {}),
+                    ("inspect_ci", {}),
                     *([("account_wide_hunt", {})] if self.run.store.supports_sql and inc.attacker_ips else [])]
         for name, args in required:
             key = {"baseline_profile": f"baseline:{args.get('identity')}", "deployments": "deployments",
-                   "threat_intel": f"intel:{args.get('ip')}", "scan_ci_repo": "semgrep",
+                   "threat_intel": f"intel:{args.get('ip')}", "scan_ci_repo": "semgrep", "inspect_ci": "ci",
                    "account_wide_hunt": "hunt"}[name]
             if key not in self.cache:
                 with telemetry.span(f"tool {name}", **{"sentinel.tool.name": name, "sentinel.tool.args": json.dumps(args),
@@ -405,7 +434,7 @@ class Investigator:
         memory_claim = self._recall()
         scores = self._score()
         offline = self._offline_claims()
-        for extra in (memory_claim, self._hunt_claim()):
+        for extra in (memory_claim, self._hunt_claim(), self._ci_claim()):
             if extra:
                 offline["credential_compromise"]["supporting"].append(extra)
         hyps = []
@@ -421,8 +450,13 @@ class Investigator:
             sup = _claims(run, h.get("supporting")) if h else []
             cnt = _claims(run, h.get("counter")) if h else []
             base = offline[hid]
+            supporting = sup or base["supporting"]
+            if hid == "credential_compromise" and sup:
+                ci_claim = self._ci_claim()
+                if ci_claim and all(c.text != ci_claim.text for c in supporting):
+                    supporting = [*supporting, ci_claim]
             hyps.append(Hypothesis(id=hid, title=(h or {}).get("title") or base["title"], confidence=conf,
-                                   supporting=sup or base["supporting"], counter=cnt or base["counter"],
+                                   supporting=supporting, counter=cnt or base["counter"],
                                    reasoning=(h or {}).get("reasoning") or base["reasoning"],
                                    factors=[{**x, "evidence_ids": [i for i in x["evidence_ids"] if i]}
                                             for x in factors]))
@@ -752,7 +786,10 @@ class Planner:
                 "scenario": run.scenario_id})
         for a in current:
             if not any(n.id == a.id for n in new):
-                a.status, a.status_reason = "superseded", f"replaced in plan v{attempt}"
+                pinned = a.status_reason.startswith("Sandbox ablation")
+                a.status = "superseded"
+                a.status_reason = (f"{a.status_reason}. Replaced in plan v{attempt}" if pinned
+                                   else f"replaced in plan v{attempt}")
         self._publish(new, attempt)
         return new
 
@@ -824,8 +861,12 @@ class Verifier:
                 telemetry.add_event("ablation", **{"sentinel.action": f"{a.id}:{a.kind}", "sentinel.culprit": culprit})
                 if culprit:
                     culprits.append(a)
+            culprit_ids = {a.id for a in culprits}
             for a in applied:
                 a.status = "sandbox_fail"
+                a.status_reason = ("Sandbox ablation: this action caused the failing checks"
+                                   if a.id in culprit_ids else
+                                   "Rolled back with the plan; not the cause")
             run.log(self.NAME, "result", f"FAIL — {len(failed)}/{len(checks)} checks failed: "
                                          f"{'; '.join(c.name for c in failed[:3])}. Ablation isolates "
                                          f"{', '.join(a.id for a in culprits) or 'no single action'}",

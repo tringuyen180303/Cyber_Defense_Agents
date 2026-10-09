@@ -15,7 +15,7 @@ from . import knowledge as kb
 from .cloudtrail import short_resource
 from .detectors import DetectionEngine
 from .iam import IamState
-from .integrations import semgrep_label
+from .ci_sandbox import label as ci_sandbox_label
 from .knowledge import Knowledge
 from .llm import LLM
 from .models import AgentStep, Event, Evidence, Integrations, RunState
@@ -59,7 +59,7 @@ class Run:
                 knowledge=f"v{self.knowledge.version} ({len(self.knowledge.detectors)} detectors, "
                           f"{len(self.knowledge.playbooks)} playbooks)",
                 event_store=f"{self.store.name} ({self.store.count():,} baseline events)",
-                code_scanner=semgrep_label(),
+                code_scanner=ci_sandbox_label(),
                 threat_intel="offline intel fixture",
                 executor="simulated AWS IAM (policy-evaluator sandbox)",
                 observability="OpenTelemetry → ClickHouse (Grafana)" if config.OTEL_ENDPOINT else "off",

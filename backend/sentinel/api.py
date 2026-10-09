@@ -101,6 +101,16 @@ async def state():
     return json.loads(hub.snapshot())
 
 
+@app.get("/api/ci")
+async def ci() -> dict:
+    """Semgrep plus the CI job trace, both from the network-off Docker sandbox. Guild calls this."""
+    from .ci_sandbox import context
+
+    ctx = await asyncio.to_thread(context)
+    return {"engine": ctx["engine"], "scanner": "semgrep" if any(f.get("engine") == "semgrep" for f in ctx["findings"]) else ctx["engine"],
+            "network": ctx["network"], "calls": ctx["calls"], "findings": ctx["findings"], "trace": ctx["trace"]}
+
+
 @app.get("/api/postmortem.md")
 async def postmortem_md():
     from fastapi.responses import PlainTextResponse

@@ -1,9 +1,8 @@
 # Sentinel — autonomous cloud incident response that gets better every incident
 
-Sentinel handles one incident class end to end: **a compromised CI credential in AWS IAM**. It detects the
-attack in CloudTrail, investigates it with evidence-cited reasoning, maps the blast radius as an attack graph,
-plans tiered remediation, proves the plan in a sandbox (replaying the attack *and* the legitimate CI workload),
-executes after approval, and writes the postmortem.
+Sentinel is an incident responder for a leaked AWS CI credential: it detects the breach, proves a fix in a sandbox, and only then gets stricter for the next attack.
+
+CloudTrail events land in ClickHouse, which holds a 30-day baseline of normal CI and production activity beside every incident replay. Detection scores those events with versioned rules and opens an incident when the behavior is new, such as an unseen network, a burst of IAM discovery, or a freshly created access key. The investigator pulls evidence and must cite real event ids: a baseline profile, a threat-intel lookup, and a Semgrep scan of the CI workflow and deploy script inside a Docker sandbox with no network. That same sandbox replays the deploy job with stubbed aws, npm, and docker commands. The blast-radius step evaluates IAM policies and draws the attack graph. The planner ranks actions as safe, review, or dangerous; deleting the IAM user is never executed. The verifier replays the attacker and the legitimate CI job, checks production health, and if the plan would break the pipeline it says so — for example by rotating a key the job still uses instead of deactivating it. The executor applies reversible changes and records rollback. A postmortem is written from the evidence. A red-team agent then mutates the attack, a learner proposes rule and playbook changes, and an evaluator replays every scenario and rejects any change that causes a regression. A person approves each promotion. The dashboard shows the incident; Grafana shows the CloudTrail lake, the learning scorecard, and the agent trace. A Guild agent can start the same flow by calling the API.
 
 A self-improvement loop then makes the next incident faster: a **Red Team** agent mutates attacks to find
 evasions, a **Learner** proposes knowledge changes, and an **Evaluator** replays every scenario and only lets
@@ -134,6 +133,9 @@ with no discovery phase).
 backend/sentinel/   agents, commander, IAM evaluator, graph, actions, verification, learning loop, API
 frontend/src/       React dashboard (incident view + self-improvement view)
 scenario/           IAM fixture, baseline generator, scenario specs, planted-leak CI repo
+sandbox/ci/         network-off Docker runner: Semgrep plus stubbed aws/npm/docker
 semgrep/            CI credential leak rules
 knowledge/          versioned knowledge, scorecards, changelog, episodic memory
+guild/              Guild agent and the OpenAPI spec for the incident API
+observability/      OpenTelemetry collector config and Grafana dashboards
 ```

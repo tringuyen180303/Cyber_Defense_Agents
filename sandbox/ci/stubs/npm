@@ -1,0 +1,5 @@
+#!/bin/sh
+printf '%s\n' "npm $*" >> /tmp/trace
+mkdir -p dist
+: > dist/app.js
+exit 0

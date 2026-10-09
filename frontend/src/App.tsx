@@ -20,9 +20,9 @@ function followTab(s: RunState): Tab {
   const inc = s.incident;
   if (!inc) return "Investigation";
   if (inc.postmortem) return "Postmortem";
-  if (s.phase === "awaiting_approval" || s.phase === "executing") return "Remediation";
+  if (inc.actions.length || s.phase === "verifying" || s.phase === "awaiting_approval" || s.phase === "executing")
+    return "Remediation";
   if (inc.verification.length) return "Verification";
-  if (inc.actions.length) return "Remediation";
   if (inc.blast_radius) return "Blast radius";
   if (inc.timeline.length) return "Attack timeline";
   return "Investigation";

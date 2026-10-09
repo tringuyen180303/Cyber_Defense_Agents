@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import fnmatch
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -20,11 +21,18 @@ def semgrep_label() -> str:
 
 
 def scan_ci_repo(repo: Path = config.CI_REPO, rules: Path = config.SEMGREP_RULES) -> list[dict[str, Any]]:
+    from .ci_sandbox import context
+
+    ctx = context(repo, rules)
+    if ctx["engine"] == "docker":
+        return ctx["findings"]
     if shutil.which("semgrep"):
         try:
             out = subprocess.run(
-                ["semgrep", "--config", str(rules), "--json", "--metrics=off", "--quiet", "--scan-unknown-extensions",
-                 str(repo)], capture_output=True, text=True, timeout=120)
+                ["semgrep", "scan", "--disable-version-check", "--metrics=off", "--quiet", "--jobs", "1",
+                 "--scan-unknown-extensions", "--config", str(rules), "--json", str(repo)],
+                capture_output=True, text=True, timeout=120,
+                env={**os.environ, "SEMGREP_SEND_METRICS": "off", "SEMGREP_ENABLE_VERSION_CHECK": "0"})
             data = json.loads(out.stdout)
             return [{
                 "rule": r["check_id"].split(".")[-1],

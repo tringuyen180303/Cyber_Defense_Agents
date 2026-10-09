@@ -1,0 +1,63 @@
+openapi: 3.0.3
+info:
+  title: Sentinel
+  version: 1.0.0
+  description: Incident response API. CI scans run Semgrep inside a Docker sandbox with no network.
+servers:
+  - url: https://sentinel.example.com
+paths:
+  /api/ci:
+    get:
+      operationId: ci_scan
+      summary: Run Semgrep on the CI repo inside the Docker sandbox and return the job trace
+      responses:
+        "200":
+          description: Semgrep findings and the commands the CI job would have run
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  engine:
+                    type: string
+                  scanner:
+                    type: string
+                  network:
+                    type: string
+                  calls:
+                    type: array
+                    items:
+                      type: string
+                  findings:
+                    type: array
+                    items:
+                      type: object
+                  trace:
+                    type: array
+                    items:
+                      type: string
+  /api/state:
+    get:
+      operationId: incident_state
+      summary: Current incident, evidence, plan, and sandbox results
+      responses:
+        "200":
+          description: Run state
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/simulate:
+    post:
+      operationId: simulate_incident
+      summary: Start an incident replay
+      responses:
+        "200":
+          description: Started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  run_id:
+                    type: string

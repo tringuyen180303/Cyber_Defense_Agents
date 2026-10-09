@@ -1,0 +1,35 @@
+id: rt-fast-exfil-known-network+slow
+label: attack
+description: 'Red-team variant of attack-fast-exfil: known_network, slow'
+start: 2026-10-08 11:40:00+00:00
+seed: 7625
+attacker:
+  ip: github2
+  ua: ci
+expect:
+  incident: true
+steps:
+- do: api_read
+  count: 3
+  spacing: 40
+- api: sts:AssumeRole
+  after: 150
+  session_name: gha-8812
+- api: s3:GetObject
+  as: session
+  after: 150
+  bucket: customer-documents
+  count: 6
+  spacing: 90
+  prefix: contracts/2026
+- do: api_read
+  after: 30
+provenance:
+  generated_by: red-team
+  base: attack-fast-exfil
+  operators:
+  - known_network
+  - slow
+  seed: 10
+  evaded_version: 1
+  confidence_at_evasion: 0.512

@@ -24,3 +24,4 @@ ENVIRONMENT = os.getenv("SENTINEL_ENV", "demo")
 REPLAY_DELAY = float(os.getenv("SENTINEL_REPLAY_DELAY", "0.35"))
 AGENT_PACE = float(os.getenv("SENTINEL_AGENT_PACE", "0.8"))
 AUTO_APPROVE = os.getenv("SENTINEL_AUTO_APPROVE", "0") == "1"
+CI_SANDBOX = os.getenv("SENTINEL_CI_SANDBOX", "1") != "0"
