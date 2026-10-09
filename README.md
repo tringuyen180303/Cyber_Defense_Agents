@@ -1,12 +1,26 @@
 # Sentinel — autonomous cloud incident response that gets better every incident
 
-Sentinel is an incident responder for a leaked AWS CI credential: it detects the breach, proves a fix in a sandbox, and only then gets stricter for the next attack.
+Sentinel handles one incident: a leaked AWS CI credential. It proves the fix in a sandbox, then tightens the rules for the next attack.
 
-CloudTrail events land in ClickHouse, which holds a 30-day baseline of normal CI and production activity beside every incident replay. Detection scores those events with versioned rules and opens an incident when the behavior is new, such as an unseen network, a burst of IAM discovery, or a freshly created access key. The investigator pulls evidence and must cite real event ids: a baseline profile, a threat-intel lookup, and a Semgrep scan of the CI workflow and deploy script inside a Docker sandbox with no network. That same sandbox replays the deploy job with stubbed aws, npm, and docker commands. The blast-radius step evaluates IAM policies and draws the attack graph. The planner ranks actions as safe, review, or dangerous; deleting the IAM user is never executed. The verifier replays the attacker and the legitimate CI job, checks production health, and if the plan would break the pipeline it says so — for example by rotating a key the job still uses instead of deactivating it. The executor applies reversible changes and records rollback. A postmortem is written from the evidence. A red-team agent then mutates the attack, a learner proposes rule and playbook changes, and an evaluator replays every scenario and rejects any change that causes a regression. A person approves each promotion. The dashboard shows the incident; Grafana shows the CloudTrail lake, the learning scorecard, and the agent trace. A Guild agent can start the same flow by calling the API.
+```mermaid
+flowchart TD
+  CT[CloudTrail] --> CH[ClickHouse<br/>30-day baseline]
+  CH --> DET[Detection]
+  SEM[Semgrep sandbox<br/>no network] --> INV[Investigator<br/>cites evidence ids]
+  DET --> INV
+  INV --> BR[Blast radius]
+  BR --> PL[Planner<br/>safe / review / dangerous]
+  PL --> VER[Verifier<br/>replay attack and CI job]
+  VER --> EX[Executor<br/>reversible]
+  EX --> PM[Postmortem]
+  PM --> RT[Red team]
+  RT --> LN[Learner]
+  LN --> EV[Evaluator<br/>reject regressions]
+  EV --> HU[Human approves]
+  HU --> DET
+```
 
-A self-improvement loop then makes the next incident faster: a **Red Team** agent mutates attacks to find
-evasions, a **Learner** proposes knowledge changes, and an **Evaluator** replays every scenario and only lets
-through changes that improve the scorecard with zero regressions. A human approves each promotion.
+Grafana shows the CloudTrail lake, the learning scorecard, and the agent trace. A Guild agent can start the same flow through the API. Deleting the IAM user is never executed.
 
 ## Quick start
 
@@ -96,16 +110,6 @@ uv run python -m sentinel.selfplay --reset --rounds 0          # back to hand-wr
 Semgrep is used when the `semgrep` CLI is on `PATH`; otherwise a built-in matcher runs the same rules.
 
 ## How it works
-
-```
-CloudTrail ─▶ Normalizer ─▶ Detection (knowledge rules, noisy-OR) ─▶ Incident Commander
-                                                                        │
-     Investigator (tools + LLM, every claim cites evidence IDs) ◀───────┤
-     Blast radius (IAM policy evaluator → attack graph)         ◀───────┤
-     Planner (SAFE / REVIEW / DANGEROUS, learned playbooks)     ◀───────┤
-     Verifier (sandbox clone: attack replay + app health + guardrails; ablation on failure)
-     Executor (reversible actions, rollback info) ─▶ production checks ─▶ Postmortem ─▶ episodic memory
-```
 
 **Deterministic where it must be.** Detection, IAM policy evaluation, attack paths, risk tiers, verification
 and execution are code. The LLM ranks hypotheses and writes narrative; any claim citing an evidence ID that
