@@ -1,0 +1,113 @@
+{
+  "account_id": "111122223333",
+  "region": "us-west-2",
+  "admins": ["alice-admin"],
+  "users": {
+    "ci-deployer": {
+      "arn": "arn:aws:iam::111122223333:user/ci-deployer",
+      "tags": {"owner": "platform", "purpose": "github-actions deploys"},
+      "access_keys": [
+        {"id": "AKIAQ3EXAMPLECIKEY01", "status": "Active", "created": "2025-08-30T17:02:11Z"}
+      ],
+      "inline_policies": {
+        "ci-deployer-access": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {"Sid": "AssumeDeployRole", "Effect": "Allow", "Action": "sts:AssumeRole",
+             "Resource": "arn:aws:iam::111122223333:role/ci-deploy-role"},
+            {"Sid": "DebugReadIAM", "Effect": "Allow", "Action": ["iam:List*", "iam:Get*"], "Resource": "*"},
+            {"Sid": "SelfKeyRotation", "Effect": "Allow",
+             "Action": ["iam:CreateAccessKey", "iam:UpdateAccessKey", "iam:DeleteAccessKey"],
+             "Resource": "arn:aws:iam::111122223333:user/ci-deployer"}
+          ]
+        }
+      }
+    },
+    "alice-admin": {
+      "arn": "arn:aws:iam::111122223333:user/alice-admin",
+      "tags": {"owner": "security"},
+      "access_keys": [
+        {"id": "AKIAQ3EXAMPLEALICE01", "status": "Active", "created": "2026-03-02T09:00:00Z"}
+      ],
+      "inline_policies": {
+        "admin": {
+          "Version": "2012-10-17",
+          "Statement": [{"Effect": "Allow", "Action": "*", "Resource": "*"}]
+        }
+      }
+    }
+  },
+  "roles": {
+    "ci-deploy-role": {
+      "arn": "arn:aws:iam::111122223333:role/ci-deploy-role",
+      "trust": {"AWS": ["arn:aws:iam::111122223333:user/ci-deployer"]},
+      "inline_policies": {
+        "ci-deploy-permissions": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {"Sid": "ArtifactStorage", "Effect": "Allow",
+             "Action": ["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
+             "Resource": ["arn:aws:s3:::*", "arn:aws:s3:::*/*"]},
+            {"Sid": "ListBuckets", "Effect": "Allow", "Action": "s3:ListAllMyBuckets", "Resource": "*"},
+            {"Sid": "PushImages", "Effect": "Allow",
+             "Action": ["ecr:GetAuthorizationToken", "ecr:PutImage", "ecr:BatchCheckLayerAvailability"],
+             "Resource": "*"},
+            {"Sid": "BuildSecrets", "Effect": "Allow", "Action": "secretsmanager:GetSecretValue",
+             "Resource": "arn:aws:secretsmanager:us-west-2:111122223333:secret:ci/*"}
+          ]
+        }
+      }
+    },
+    "prod-api-role": {
+      "arn": "arn:aws:iam::111122223333:role/prod-api-role",
+      "trust": {"Service": ["ecs-tasks.amazonaws.com"]},
+      "inline_policies": {
+        "prod-api-data": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject"],
+             "Resource": "arn:aws:s3:::customer-documents/*"},
+            {"Effect": "Allow", "Action": "secretsmanager:GetSecretValue",
+             "Resource": "arn:aws:secretsmanager:us-west-2:111122223333:secret:prod/*"}
+          ]
+        }
+      }
+    }
+  },
+  "resources": [
+    {"arn": "arn:aws:s3:::build-artifacts", "type": "s3_bucket", "name": "build-artifacts", "critical": false,
+     "probe": {"action": "s3:GetObject", "resource": "arn:aws:s3:::build-artifacts/probe"},
+     "description": "CI build outputs"},
+    {"arn": "arn:aws:s3:::customer-documents", "type": "s3_bucket", "name": "customer-documents", "critical": true,
+     "probe": {"action": "s3:GetObject", "resource": "arn:aws:s3:::customer-documents/probe"},
+     "description": "Customer contracts and invoices (PII)"},
+    {"arn": "arn:aws:s3:::model-artifacts", "type": "s3_bucket", "name": "model-artifacts", "critical": true,
+     "probe": {"action": "s3:GetObject", "resource": "arn:aws:s3:::model-artifacts/probe"},
+     "description": "Proprietary model weights"},
+    {"arn": "arn:aws:secretsmanager:us-west-2:111122223333:secret:ci/npm-token-Ab12Cd", "type": "secret",
+     "name": "ci/npm-token", "critical": true, "version": 3,
+     "probe": {"action": "secretsmanager:GetSecretValue",
+               "resource": "arn:aws:secretsmanager:us-west-2:111122223333:secret:ci/npm-token-Ab12Cd"},
+     "description": "Publish token for the private npm registry"},
+    {"arn": "arn:aws:secretsmanager:us-west-2:111122223333:secret:prod/db-password-Ef34Gh", "type": "secret",
+     "name": "prod/db-password", "critical": true, "version": 7,
+     "probe": {"action": "secretsmanager:GetSecretValue",
+               "resource": "arn:aws:secretsmanager:us-west-2:111122223333:secret:prod/db-password-Ef34Gh"},
+     "description": "Production database credential"},
+    {"arn": "arn:aws:ecr:us-west-2:111122223333:repository/sentinel-api", "type": "ecr_repository",
+     "name": "sentinel-api", "critical": false,
+     "probe": {"action": "ecr:PutImage", "resource": "arn:aws:ecr:us-west-2:111122223333:repository/sentinel-api"},
+     "description": "API container images"},
+    {"arn": "arn:aws:iam::111122223333:user/ci-deployer", "type": "iam_credential_minting",
+     "name": "mint keys for ci-deployer", "critical": true,
+     "probe": {"action": "iam:CreateAccessKey", "resource": "arn:aws:iam::111122223333:user/ci-deployer"},
+     "description": "Ability to create new long-lived credentials (persistence)"}
+  ],
+  "ci_credential": {
+    "system": "GitHub Actions",
+    "repository": "acme/sentinel-api",
+    "secret_name": "AWS_ACCESS_KEY_ID",
+    "user": "ci-deployer",
+    "key_id": "AKIAQ3EXAMPLECIKEY01"
+  }
+}

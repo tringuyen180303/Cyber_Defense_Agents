@@ -1,0 +1,46 @@
+{
+ "45.137.21.9": {
+  "asn": "AS64511",
+  "org": "ExampleVPS Hosting (fictional)",
+  "country": "NL",
+  "category": "hosting/VPS",
+  "blocklists": [],
+  "first_seen_by_feeds": null,
+  "note": "No reputation data; hosting-provider address space"
+ },
+ "4.148.12.34": {
+  "asn": "AS8075",
+  "org": "Microsoft Azure (GitHub Actions runners)",
+  "country": "US",
+  "category": "ci-runner",
+  "blocklists": []
+ },
+ "20.42.8.17": {
+  "asn": "AS8075",
+  "org": "Microsoft Azure (GitHub Actions runners)",
+  "country": "US",
+  "category": "ci-runner",
+  "blocklists": []
+ },
+ "52.225.70.9": {
+  "asn": "AS8075",
+  "org": "Microsoft Azure (GitHub Actions runners)",
+  "country": "US",
+  "category": "ci-runner",
+  "blocklists": []
+ },
+ "13.105.49.4": {
+  "asn": "AS8075",
+  "org": "Microsoft Azure (GitHub Actions runners)",
+  "country": "US",
+  "category": "ci-runner",
+  "blocklists": []
+ },
+ "172.183.51.20": {
+  "asn": "AS8075",
+  "org": "Microsoft Azure (GitHub Actions runners)",
+  "country": "US",
+  "category": "ci-runner",
+  "blocklists": []
+ }
+}

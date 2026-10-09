@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+frontend/dist/
+runs/
+scenario/fixtures/baseline_events.jsonl
+eval/results/
+.DS_Store

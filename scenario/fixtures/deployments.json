@@ -1,0 +1,18 @@
+[
+ {
+  "id": "deploy-4819",
+  "service": "sentinel-api",
+  "time": "2026-10-06T21:48:12Z",
+  "actor": "github-actions",
+  "commit": "9c1e2fa",
+  "change_ticket": "CHG-2291"
+ },
+ {
+  "id": "deploy-4821",
+  "service": "sentinel-api",
+  "time": "2026-10-07T02:27:10Z",
+  "actor": "github-actions",
+  "commit": "b77d04e",
+  "change_ticket": "CHG-2297"
+ }
+]
